@@ -38,6 +38,7 @@ Computer -> IP -> MAC -> VLAN -> Switch -> Physical Port
 ├── compose.yml
 ├── .env.example
 ├── .gitignore
+├── SECURITY.md
 ├── docs/
 │   ├── INSTALL.md
 │   ├── ARCHITECTURE.md
@@ -51,12 +52,13 @@ Computer -> IP -> MAC -> VLAN -> Switch -> Physical Port
 │   │   └── snmpv3-example.txt
 │   └── mikrotik/
 │       └── snmpv3-example.rsc
-└── scripts/
-    ├── install-docker.sh
-    ├── deploy.sh
-    ├── status.sh
-    ├── validate.sh
-    └── backup.sh
+├── scripts/
+│   ├── install-docker.sh
+│   ├── deploy.sh
+│   ├── status.sh
+│   ├── validate.sh
+│   └── backup.sh
+└── .github/workflows/validate.yml
 ```
 
 ## Quick start
@@ -67,9 +69,9 @@ cd GLPI-LibreNMS
 cp .env.example .env
 nano .env
 chmod 600 .env
-sudo ./scripts/install-docker.sh
-./scripts/validate.sh
-./scripts/deploy.sh
+sudo bash scripts/install-docker.sh
+bash scripts/validate.sh
+bash scripts/deploy.sh
 ```
 
 Default local ports:
@@ -94,7 +96,9 @@ For production, place both applications behind a reverse proxy with HTTPS and re
 
 ## Project status
 
-Stage 1: Docker deployment + Cisco/MikroTik network discovery baseline.
+**Stage 1:** Docker deployment + Cisco/MikroTik network discovery baseline.
+
+Planned next stage: endpoint rollout with GLPI Agent and automated IP/MAC/switch/port correlation.
 
 ## License
 
