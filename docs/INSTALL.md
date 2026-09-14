@@ -53,7 +53,7 @@ id
 ## 4. Install Docker
 
 ```bash
-sudo ./scripts/install-docker.sh
+sudo bash scripts/install-docker.sh
 ```
 
 Log out/in if Docker group membership was changed.
@@ -61,19 +61,19 @@ Log out/in if Docker group membership was changed.
 ## 5. Validate configuration
 
 ```bash
-./scripts/validate.sh
+bash scripts/validate.sh
 ```
 
 ## 6. Deploy
 
 ```bash
-./scripts/deploy.sh
+bash scripts/deploy.sh
 ```
 
 Check:
 
 ```bash
-./scripts/status.sh
+bash scripts/status.sh
 ```
 
 ## 7. Access applications
@@ -122,7 +122,7 @@ These optional listeners are intentionally not enabled in the base compose file.
 Always back up before upgrade:
 
 ```bash
-./scripts/backup.sh
+bash scripts/backup.sh
 ```
 
 Then:
