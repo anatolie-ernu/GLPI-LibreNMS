@@ -42,6 +42,7 @@ jobs:
             --pdf-engine=xelatex \
             --toc \
             --number-sections \
+            -M lang=en-US \
             -V geometry:margin=1.8cm \
             -V fontsize=10pt \
             -V colorlinks=true \
