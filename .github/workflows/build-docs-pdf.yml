@@ -1,0 +1,66 @@
+name: Build Documentation PDF
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/*.md'
+      - 'config/**'
+      - 'scripts/**'
+      - 'compose.yml'
+      - '.env.example'
+      - '.github/workflows/build-docs-pdf.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: documentation-pdf-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-pdf:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare output directory
+        run: mkdir -p docs/pdf
+
+      - name: Build complete Romanian PDF guide
+        run: |
+          docker run --rm \
+            -v "$PWD:/data" \
+            -w /data \
+            pandoc/latex:latest \
+            docs/COMPLETE-GUIDE-RO.md \
+            -o docs/pdf/GLPI-LibreNMS-Complete-Guide-RO.pdf \
+            --pdf-engine=xelatex \
+            --toc \
+            --number-sections \
+            -V geometry:margin=1.8cm \
+            -V fontsize=10pt \
+            -V colorlinks=true \
+            -V urlcolor=blue
+
+      - name: Verify PDF
+        run: |
+          test -s docs/pdf/GLPI-LibreNMS-Complete-Guide-RO.pdf
+          file docs/pdf/GLPI-LibreNMS-Complete-Guide-RO.pdf
+          ls -lh docs/pdf/GLPI-LibreNMS-Complete-Guide-RO.pdf
+
+      - name: Commit generated PDF
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/pdf/GLPI-LibreNMS-Complete-Guide-RO.pdf
+          if git diff --cached --quiet; then
+            echo "PDF is unchanged."
+          else
+            git commit -m "docs: publish generated complete PDF guide"
+            git push
+          fi
