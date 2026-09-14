@@ -1,12 +1,25 @@
 # GLPI + LibreNMS
 
-Open-source IT asset inventory and network discovery stack based on **GLPI**, **LibreNMS**, and **Docker Compose**.
+Open-source IT asset inventory, network discovery and integrated IT Service Management stack based on **GLPI**, **LibreNMS**, and **Docker Compose**.
 
 The project is designed for enterprise LAN environments with **Cisco** and **MikroTik** switches and focuses on correlating:
 
 ```text
 Computer -> IP -> MAC -> VLAN -> Switch -> Physical Port
 ```
+
+## Architecture decision
+
+**GLPI is the integrated Service Desk / ITSM platform for this project.** A separate ticketing platform is not part of the baseline architecture.
+
+```text
+GLPI = CMDB + Asset Management + Service Desk / ITSM
+LibreNMS = Network Monitoring + Discovery
+Integration API = GLPI <-> LibreNMS correlation and automation
+Active Directory / LDAP = identity source
+```
+
+See [ADR-001 — Use GLPI as the Integrated Service Desk](docs/ADR-001-GLPI-SERVICEDESK.md).
 
 ## Complete documentation
 
@@ -17,6 +30,11 @@ Computer -> IP -> MAC -> VLAN -> Switch -> Physical Port
 - [Cisco SNMPv3](docs/CISCO-SNMPV3.md)
 - [MikroTik SNMPv3](docs/MIKROTIK-SNMPV3.md)
 - [GLPI Agent](docs/GLPI-AGENT.md)
+- **[GLPI Service Desk Guide](docs/GLPI-SERVICEDESK.md)**
+- **[Escalation, KPI and Reporting Model](docs/GLPI-ESCALATION-REPORTING.md)**
+- **[Stage 2 — ITSM / Service Desk Integration](docs/STAGE-2-ITSM-SERVICEDESK.md)**
+- [Integration API Design](integration-api/README.md)
+- [Integration API OpenAPI Contract](integration-api/openapi.yaml)
 - [Backup / Restore](docs/BACKUP-RESTORE.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 
@@ -24,12 +42,48 @@ The PDF is regenerated automatically by GitHub Actions when the documentation or
 
 ## Components
 
-- **GLPI** — IT Asset Management / CMDB, computers, users, hardware, software and GLPI Agent inventory.
-- **LibreNMS** — network discovery, SNMP polling, interfaces, VLANs, FDB/MAC tables, ARP/NDP and LLDP/CDP neighbors.
+- **GLPI** — IT Asset Management / CMDB, Service Desk / ITSM, tickets, incidents, requests, problems, changes, SLA/OLA, escalation, dashboards, users, hardware, software and GLPI Agent inventory.
+- **LibreNMS** — network discovery, SNMP polling, interfaces, VLANs, FDB/MAC tables, ARP/NDP, LLDP/CDP neighbors and alerts.
+- **GLPI Agent** — managed endpoint inventory.
+- **Integration API** — asset/network correlation and LibreNMS alert-to-GLPI ticket automation.
+- **Active Directory / LDAP** — users/groups and identity integration.
 - **MySQL** — GLPI database.
 - **MariaDB** — LibreNMS database.
 - **Redis** — LibreNMS cache/session backend.
 - **LibreNMS Dispatcher** — distributed/parallel polling service.
+
+## Service Desk model
+
+```text
+L0  Self-Service / Knowledge Base
+ |
+ v
+L1  Service Desk
+ |
+ +--> L2 Network
+ +--> L2 Infrastructure
+ +--> L2 Security
+ +--> L2 Applications
+ |
+ v
+L3  Senior Specialist / Head of IT / Vendor
+```
+
+Stage 2 includes:
+
+- Incident and Request workflows;
+- ticket-to-asset association;
+- AD/LDAP users and groups;
+- business calendars;
+- SLA TTO/TTR;
+- internal OLA;
+- multi-level functional and hierarchical escalation;
+- Major Incident workflow;
+- ticket business rules and templates;
+- Service Desk Manager and Head of IT dashboards;
+- SLA/MTTA/MTTR/backlog/reopen/FCR reporting;
+- LibreNMS alert -> GLPI incident automation;
+- GLPI asset -> LibreNMS switch/port/VLAN enrichment.
 
 ## Supported network equipment in this repository
 
@@ -43,7 +97,9 @@ The PDF is regenerated automatically by GitHub Actions when the documentation or
 - SNMP access must be restricted to the LibreNMS management IP.
 - Default/public SNMP communities must not be used in production.
 - MikroTik SNMP write access is **not enabled by default**. It is only needed for the optional LibreNMS RouterOS VLAN helper script and carries additional risk.
-- Secrets are kept in `.env`, which is excluded from Git.
+- API and database secrets are kept out of Git.
+- Integration API service accounts follow least privilege.
+- GLPI/LibreNMS APIs should use HTTPS in production.
 
 ## Repository structure
 
@@ -60,10 +116,17 @@ The PDF is regenerated automatically by GitHub Actions when the documentation or
 │   ├── CISCO-SNMPV3.md
 │   ├── MIKROTIK-SNMPV3.md
 │   ├── GLPI-AGENT.md
+│   ├── GLPI-SERVICEDESK.md
+│   ├── GLPI-ESCALATION-REPORTING.md
+│   ├── STAGE-2-ITSM-SERVICEDESK.md
+│   ├── ADR-001-GLPI-SERVICEDESK.md
 │   ├── BACKUP-RESTORE.md
 │   ├── TROUBLESHOOTING.md
 │   └── pdf/
 │       └── GLPI-LibreNMS-Complete-Guide-RO.pdf
+├── integration-api/
+│   ├── README.md
+│   └── openapi.yaml
 ├── config/
 │   ├── cisco/
 │   │   └── snmpv3-example.txt
@@ -100,24 +163,11 @@ Default local ports:
 
 For production, place both applications behind a reverse proxy with HTTPS and restrict direct access to the management network.
 
-## Recommended deployment flow
-
-1. Deploy Docker stack.
-2. Add one Cisco switch through SNMPv3.
-3. Verify interfaces, FDB/MAC, VLAN and LLDP/CDP discovery.
-4. Add one MikroTik device through SNMPv3.
-5. Verify bridge ports, interfaces, MAC/FDB and neighbors.
-6. Deploy GLPI Agent to several test workstations.
-7. Validate IP/MAC correlation between GLPI and LibreNMS.
-8. Roll out GLPI Agent through GPO or endpoint management.
-9. Add remaining network devices.
-10. Configure backup, HTTPS, monitoring and access controls.
-
 ## Project status
 
 **Stage 1:** Docker deployment + Cisco/MikroTik network discovery baseline.
 
-Planned next stage: endpoint rollout with GLPI Agent and automated IP/MAC/switch/port correlation.
+**Stage 2:** Integrated GLPI Service Desk / ITSM, escalation/reporting and GLPI <-> LibreNMS automation — design and implementation in progress.
 
 ## License
 
