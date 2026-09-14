@@ -8,6 +8,20 @@ The project is designed for enterprise LAN environments with **Cisco** and **Mik
 Computer -> IP -> MAC -> VLAN -> Switch -> Physical Port
 ```
 
+## Complete documentation
+
+- **[Complete Romanian PDF Guide](docs/pdf/GLPI-LibreNMS-Complete-Guide-RO.pdf)** — installation, configuration, Cisco/MikroTik SNMPv3, GLPI Agent, GPO rollout, backup/restore, security, troubleshooting and operations.
+- **[Complete Romanian Markdown Guide](docs/COMPLETE-GUIDE-RO.md)** — editable source used to generate the PDF.
+- [Installation Guide](docs/INSTALL.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Cisco SNMPv3](docs/CISCO-SNMPV3.md)
+- [MikroTik SNMPv3](docs/MIKROTIK-SNMPV3.md)
+- [GLPI Agent](docs/GLPI-AGENT.md)
+- [Backup / Restore](docs/BACKUP-RESTORE.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+
+The PDF is regenerated automatically by GitHub Actions when the documentation or deployment configuration changes.
+
 ## Components
 
 - **GLPI** — IT Asset Management / CMDB, computers, users, hardware, software and GLPI Agent inventory.
@@ -40,13 +54,16 @@ Computer -> IP -> MAC -> VLAN -> Switch -> Physical Port
 ├── .gitignore
 ├── SECURITY.md
 ├── docs/
+│   ├── COMPLETE-GUIDE-RO.md
 │   ├── INSTALL.md
 │   ├── ARCHITECTURE.md
 │   ├── CISCO-SNMPV3.md
 │   ├── MIKROTIK-SNMPV3.md
 │   ├── GLPI-AGENT.md
 │   ├── BACKUP-RESTORE.md
-│   └── TROUBLESHOOTING.md
+│   ├── TROUBLESHOOTING.md
+│   └── pdf/
+│       └── GLPI-LibreNMS-Complete-Guide-RO.pdf
 ├── config/
 │   ├── cisco/
 │   │   └── snmpv3-example.txt
@@ -58,7 +75,9 @@ Computer -> IP -> MAC -> VLAN -> Switch -> Physical Port
 │   ├── status.sh
 │   ├── validate.sh
 │   └── backup.sh
-└── .github/workflows/validate.yml
+└── .github/workflows/
+    ├── validate.yml
+    └── build-docs-pdf.yml
 ```
 
 ## Quick start
