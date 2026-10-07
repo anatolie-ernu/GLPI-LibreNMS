@@ -1,0 +1,28 @@
+! Cisco IOS / IOS XE - LibreNMS SNMPv3 authPriv example
+! Replace every <PLACEHOLDER> before applying.
+!
+conf t
+!
+ip access-list standard ACL-LIBRENMS-SNMP
+ permit host <LIBRENMS_IP>
+ deny any log
+exit
+!
+snmp-server view LIBRENMS-VIEW iso included
+snmp-server group LIBRENMS-GROUP v3 priv read LIBRENMS-VIEW access ACL-LIBRENMS-SNMP
+snmp-server user librenms LIBRENMS-GROUP v3 auth sha <AUTH_PASSWORD> priv aes 128 <PRIV_PASSWORD>
+snmp-server contact <CONTACT>
+snmp-server location <LOCATION>
+!
+lldp run
+cdp run
+!
+end
+write memory
+!
+! Verification:
+show snmp user
+show snmp group
+show access-lists ACL-LIBRENMS-SNMP
+show lldp neighbors
+show cdp neighbors

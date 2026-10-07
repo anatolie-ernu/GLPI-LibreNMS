@@ -1,0 +1,246 @@
+openapi: 3.1.0
+info:
+  title: GLPI LibreNMS Integration API
+  version: 0.1.0
+  description: >-
+    Internal API for correlating GLPI assets and Service Desk tickets with
+    LibreNMS network state and alerts.
+servers:
+  - url: https://integration.example.internal
+paths:
+  /health:
+    get:
+      summary: Health status
+      operationId: health
+      responses:
+        '200':
+          description: Service health
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /v1/endpoints/by-ip/{ip}:
+    get:
+      summary: Resolve endpoint network location by IP
+      operationId: endpointByIp
+      parameters:
+        - name: ip
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Endpoint resolution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EndpointResolution'
+        '404':
+          description: Endpoint not found
+  /v1/endpoints/by-mac/{mac}:
+    get:
+      summary: Resolve endpoint network location by MAC
+      operationId: endpointByMac
+      parameters:
+        - name: mac
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Endpoint resolution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EndpointResolution'
+        '404':
+          description: Endpoint not found
+  /v1/assets/{asset_id}/network:
+    get:
+      summary: Enrich a GLPI asset with LibreNMS network context
+      operationId: assetNetwork
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Asset network context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetNetworkResponse'
+        '404':
+          description: Asset or network evidence not found
+  /v1/events/librenms:
+    post:
+      summary: Receive a LibreNMS alert/recovery event
+      operationId: librenmsEvent
+      security:
+        - webhookSecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LibreNmsEvent'
+      responses:
+        '202':
+          description: Event accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventAccepted'
+        '401':
+          description: Invalid webhook authentication
+        '422':
+          description: Invalid payload
+  /v1/correlations/{key}:
+    get:
+      summary: Get alert-to-ticket correlation state
+      operationId: getCorrelation
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Correlation state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Correlation'
+        '404':
+          description: Correlation not found
+components:
+  securitySchemes:
+    webhookSecret:
+      type: apiKey
+      in: header
+      name: X-Webhook-Secret
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        librenms:
+          type: string
+          enum: [reachable, unreachable, unknown]
+        glpi:
+          type: string
+          enum: [reachable, unreachable, unknown]
+    DeviceRef:
+      type: object
+      properties:
+        id:
+          type: integer
+        hostname:
+          type: string
+    PortRef:
+      type: object
+      properties:
+        id:
+          type: integer
+        ifName:
+          type: string
+        status:
+          type: string
+    EndpointResolution:
+      type: object
+      properties:
+        hostname:
+          type: [string, 'null']
+        ip:
+          type: [string, 'null']
+        mac:
+          type: string
+        device:
+          $ref: '#/components/schemas/DeviceRef'
+        port:
+          $ref: '#/components/schemas/PortRef'
+        vlan:
+          type: [integer, 'null']
+        confidence:
+          type: string
+          enum: [high, medium, low]
+        last_seen:
+          type: [string, 'null']
+          format: date-time
+        evidence_sources:
+          type: array
+          items:
+            type: string
+    AssetNetworkResponse:
+      type: object
+      properties:
+        asset_id:
+          type: integer
+        endpoint:
+          $ref: '#/components/schemas/EndpointResolution'
+    LibreNmsEvent:
+      type: object
+      required: [alert_id, rule_id, device_id, hostname, state]
+      properties:
+        alert_id:
+          type: integer
+        rule_id:
+          type: integer
+        device_id:
+          type: integer
+        hostname:
+          type: string
+        severity:
+          type: string
+        state:
+          type: string
+          description: Alert or recovery state from LibreNMS transport payload
+        timestamp:
+          type: [string, 'null']
+          format: date-time
+        fault_object:
+          type: [string, 'null']
+        message:
+          type: [string, 'null']
+        raw:
+          type: object
+          additionalProperties: true
+    EventAccepted:
+      type: object
+      required: [accepted, correlation_key]
+      properties:
+        accepted:
+          type: boolean
+        correlation_key:
+          type: string
+        glpi_ticket_id:
+          type: [integer, 'null']
+        action:
+          type: string
+          enum: [created, updated, recovered, ignored]
+    Correlation:
+      type: object
+      properties:
+        key:
+          type: string
+        librenms_alert_id:
+          type: integer
+        glpi_ticket_id:
+          type: integer
+        state:
+          type: string
+          enum: [open, recovered, closed]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time

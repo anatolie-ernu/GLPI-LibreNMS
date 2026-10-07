@@ -1,0 +1,40 @@
+name: Validate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare CI environment
+        run: |
+          cp .env.example .env
+          sed -i 's/CHANGE_ME_STRONG_GLPI_DB_PASSWORD/CI_GLPI_PASSWORD_ChangeMe123!/' .env
+          sed -i 's/CHANGE_ME_STRONG_LIBRENMS_DB_PASSWORD/CI_LIBRENMS_PASSWORD_ChangeMe123!/' .env
+
+      - name: Validate Docker Compose
+        run: docker compose config -q
+
+      - name: Validate shell syntax
+        run: |
+          for script in scripts/*.sh; do
+            echo "Checking ${script}"
+            bash -n "${script}"
+          done
+
+      - name: Ensure secrets file is not tracked
+        run: |
+          if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+            echo "ERROR: .env must never be committed"
+            exit 1
+          fi

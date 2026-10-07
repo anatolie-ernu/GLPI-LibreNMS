@@ -1,0 +1,153 @@
+name: glpi-librenms
+
+services:
+  glpi-db:
+    image: ${GLPI_DB_IMAGE:-mysql:8.4}
+    container_name: glpi-db
+    restart: unless-stopped
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_DATABASE: ${GLPI_DB_NAME}
+      MYSQL_USER: ${GLPI_DB_USER}
+      MYSQL_PASSWORD: ${GLPI_DB_PASSWORD}
+    volumes:
+      - glpi_db:/var/lib/mysql
+    networks:
+      - glpi-net
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u${GLPI_DB_USER} -p${GLPI_DB_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  glpi:
+    image: ${GLPI_IMAGE:-glpi/glpi:11.0.8}
+    container_name: glpi
+    restart: unless-stopped
+    depends_on:
+      glpi-db:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ}
+      GLPI_DB_HOST: glpi-db
+      GLPI_DB_PORT: 3306
+      GLPI_DB_NAME: ${GLPI_DB_NAME}
+      GLPI_DB_USER: ${GLPI_DB_USER}
+      GLPI_DB_PASSWORD: ${GLPI_DB_PASSWORD}
+      GLPI_CRONTAB_ENABLED: ${GLPI_CRONTAB_ENABLED:-1}
+      GLPI_SKIP_AUTOINSTALL: ${GLPI_SKIP_AUTOINSTALL:-false}
+      GLPI_SKIP_AUTOUPDATE: ${GLPI_SKIP_AUTOUPDATE:-false}
+    volumes:
+      - glpi_data:/var/glpi
+    ports:
+      - "${GLPI_HTTP_PORT:-8081}:80"
+    networks:
+      - glpi-net
+
+  librenms-db:
+    image: ${LIBRENMS_DB_IMAGE:-mariadb:10}
+    container_name: librenms-db
+    restart: unless-stopped
+    command:
+      - mysqld
+      - --innodb-file-per-table=1
+      - --lower-case-table-names=0
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      TZ: ${TZ}
+      MARIADB_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_DATABASE: ${LIBRENMS_DB_NAME}
+      MYSQL_USER: ${LIBRENMS_DB_USER}
+      MYSQL_PASSWORD: ${LIBRENMS_DB_PASSWORD}
+    volumes:
+      - librenms_db:/var/lib/mysql
+    networks:
+      - librenms-net
+    healthcheck:
+      test: ["CMD-SHELL", "healthcheck.sh --connect --innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  librenms-redis:
+    image: ${REDIS_IMAGE:-redis:7.2-alpine}
+    container_name: librenms-redis
+    restart: unless-stopped
+    networks:
+      - librenms-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  librenms:
+    image: ${LIBRENMS_IMAGE:-librenms/librenms:latest}
+    container_name: librenms
+    hostname: librenms
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    depends_on:
+      librenms-db:
+        condition: service_healthy
+      librenms-redis:
+        condition: service_healthy
+    environment: &librenms_environment
+      TZ: ${TZ}
+      PUID: ${PUID}
+      PGID: ${PGID}
+      DB_HOST: librenms-db
+      DB_NAME: ${LIBRENMS_DB_NAME}
+      DB_USER: ${LIBRENMS_DB_USER}
+      DB_PASSWORD: ${LIBRENMS_DB_PASSWORD}
+      DB_TIMEOUT: 60
+      REDIS_HOST: librenms-redis
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+      MEMORY_LIMIT: ${LIBRENMS_MEMORY_LIMIT:-512M}
+      MAX_INPUT_VARS: ${LIBRENMS_MAX_INPUT_VARS:-2000}
+      UPLOAD_MAX_SIZE: ${LIBRENMS_UPLOAD_MAX_SIZE:-32M}
+      OPCACHE_MEM_SIZE: ${LIBRENMS_OPCACHE_MEM_SIZE:-256}
+    volumes:
+      - librenms_data:/data
+    ports:
+      - "${LIBRENMS_HTTP_PORT:-8000}:8000"
+    networks:
+      - librenms-net
+
+  librenms-dispatcher:
+    image: ${LIBRENMS_IMAGE:-librenms/librenms:latest}
+    container_name: librenms-dispatcher
+    hostname: librenms-dispatcher
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    depends_on:
+      - librenms
+      - librenms-redis
+    environment:
+      <<: *librenms_environment
+      DISPATCHER_NODE_ID: dispatcher1
+      SIDECAR_DISPATCHER: 1
+    volumes:
+      - librenms_data:/data
+    networks:
+      - librenms-net
+
+networks:
+  glpi-net:
+    driver: bridge
+  librenms-net:
+    driver: bridge
+
+volumes:
+  glpi_db:
+  glpi_data:
+  librenms_db:
+  librenms_data:
