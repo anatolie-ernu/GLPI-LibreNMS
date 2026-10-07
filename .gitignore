@@ -1,0 +1,64 @@
+# ============================================================================
+# GLPI-LibreNMS + Nginx Proxy Manager - .gitignore
+# ============================================================================
+
+# Environment variables with passwords
+.env
+.env.local
+.env.*.local
+
+# Docker volumes data (local)
+mysql_data/
+glpi_data/
+librenms_data/
+librenms_logs/
+npm_data/
+npm_letsencrypt/
+redis_data/
+
+# Build artifacts
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Backups
+*.backup
+*.sql.gz
+*.tar.gz
+backup/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS specific
+Thumbs.db
+.DS_Store
+
+# Docker
+docker-compose.override.yml
+
+# Credentials
+credentials.json
+secrets.yaml
+keys/
+
+# ============================================================================
+# IMPORTANT: .env TREBUIE să fie în .gitignore!
+# Nu commita parolele în repository!
+# ============================================================================

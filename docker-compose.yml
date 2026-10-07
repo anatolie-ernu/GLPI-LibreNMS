@@ -1,0 +1,204 @@
+version: '3.9'
+
+services:
+  # ============================================================================
+  # NGINX PROXY MANAGER - Publicare aplicații în rețea locală
+  # ============================================================================
+  nginx-proxy-manager:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: npm
+    restart: always
+    ports:
+      - "80:80"        # HTTP proxy
+      - "443:443"      # HTTPS proxy
+      - "81:81"        # Admin UI
+    environment:
+      DB_SQLITE_FILE: /data/database.sqlite
+      DISABLE_IPV6: "true"
+    volumes:
+      - npm_data:/data
+      - npm_letsencrypt:/etc/letsencrypt
+    networks:
+      - glpi-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:81/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      - glpi
+      - librenms
+
+  # ============================================================================
+  # GLPI - IT Asset Management
+  # ============================================================================
+  glpi:
+    image: diouxx/glpi:latest
+    container_name: glpi
+    restart: always
+    ports:
+      - "3000:80"
+    environment:
+      GLPI_INSTALL: "true"
+      GLPI_DB_HOST: "mysql"
+      GLPI_DB_NAME: "glpi"
+      GLPI_DB_USER: "glpi"
+      GLPI_DB_PASSWORD: "glpi_secure_pass"
+      GLPI_DOMAIN: "glpi.local"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - glpi_data:/var/www/glpi
+    networks:
+      - glpi-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ============================================================================
+  # LIBRENMS - Network Monitoring
+  # ============================================================================
+  librenms:
+    image: librenms/librenms:latest
+    container_name: librenms
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: "mysql"
+      DB_NAME: "librenms"
+      DB_USER: "librenms"
+      DB_PASSWORD: "librenms_secure_pass"
+      APP_KEY: "base64:abcd1234567890abcdef1234567890abcdef1234567"
+      APP_DEBUG: "false"
+      APP_URL: "http://librenms.local"
+      LIBRENMS_DISABLE_DAILY_UPDATES: "true"
+      TZ: "Europe/Bucharest"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - librenms_data:/data
+      - librenms_logs:/logs
+    networks:
+      - glpi-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ============================================================================
+  # MYSQL - Database Server
+  # ============================================================================
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "root_secure_pass"
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_INITDB_SKIP_TZINFO: "yes"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - glpi-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-proot_secure_pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: 
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_connections=1000
+
+  # ============================================================================
+  # REDIS - Cache Server (pentru LibreNMS)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - glpi-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes
+
+  # ============================================================================
+  # AUTO-DISCOVERY SERVICE - Publicare automată prin NPM
+  # ============================================================================
+  npm-auto-discovery:
+    build:
+      context: .
+      dockerfile: Dockerfile.discovery
+    container_name: npm-auto-discovery
+    restart: always
+    environment:
+      NPM_API_URL: "http://nginx-proxy-manager:81/api"
+      NPM_ADMIN_EMAIL: "admin@ernu.md"
+      NPM_ADMIN_PASSWORD: "Npm@ernu2025!"
+      DISCOVERY_INTERVAL: "300"
+      LOG_LEVEL: "info"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - glpi-net
+    depends_on:
+      nginx-proxy-manager:
+        condition: service_healthy
+      glpi:
+        condition: service_healthy
+      librenms:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8888/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+# ============================================================================
+# VOLUMES
+# ============================================================================
+volumes:
+  npm_data:
+    driver: local
+  npm_letsencrypt:
+    driver: local
+  glpi_data:
+    driver: local
+  librenms_data:
+    driver: local
+  librenms_logs:
+    driver: local
+  mysql_data:
+    driver: local
+
+# ============================================================================
+# NETWORKS
+# ============================================================================
+networks:
+  glpi-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
