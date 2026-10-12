@@ -1,0 +1,11 @@
+level,group_name,purpose
+L0,Self-Service-KB,Knowledge base and self-service
+L1,SD-L1-ServiceDesk,Intake triage standard resolution and handoff
+L2,SD-L2-Network,Cisco MikroTik LAN WAN VLAN VPN connectivity
+L2,SD-L2-Infrastructure,Servers virtualization storage backup
+L2,SD-L2-Security,Security incidents endpoint protection
+L2,SD-L2-Applications,Applications and application services
+L2,SD-L2-BusinessSystems,Business systems ownership
+L3,SD-L3-Senior,Senior technical escalation
+L3,SD-L3-IT-Management,Major incident management and resource decisions
+L3,SD-L3-Vendor-Coordination,External supplier escalation
