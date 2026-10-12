@@ -570,3 +570,27 @@ gunzip < backup-20261007.sql.gz | docker-compose exec -T mysql mysql -u root -pr
 ---
 
 **Last Updated:** October 7, 2026
+
+## Stage 2 — GLPI Service Desk / ITSM
+
+The project standardizes on **GLPI Service Desk** as the integrated ITSM layer. No separate Service Desk platform is required for the baseline architecture.
+
+Configuration source of truth:
+
+- [Stage 2 implementation status](docs/STAGE-2-IMPLEMENTATION-STATUS.md)
+- [Priority / SLA / OLA / Escalation policy](docs/GLPI-PRIORITY-SLA-ESCALATION-MATRIX.md)
+- [GLPI Service Desk guide](docs/GLPI-SERVICEDESK.md)
+- [Escalation and reporting model](docs/GLPI-ESCALATION-REPORTING.md)
+- [Stage 2 ITSM plan](docs/STAGE-2-ITSM-SERVICEDESK.md)
+- [GLPI policy YAML/CSV](config/glpi/)
+
+Baseline operational model:
+
+```text
+L0  Self-Service / Knowledge Base
+L1  SD-L1-ServiceDesk
+L2  Network / Infrastructure / Security / Applications / Business Systems
+L3  Senior / IT Management / Vendor Coordination
+```
+
+Priority is derived from **Impact x Urgency** and normalized to P1 Critical, P2 High, P3 Medium and P4 Low. SLA, OLA and concrete time-based escalation rules are version-controlled under `config/glpi/`.
