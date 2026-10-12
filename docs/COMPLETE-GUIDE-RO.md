@@ -863,3 +863,41 @@ set enabled=yes contact="<CONTACT>" location="<LOCATION>"
 | Trunk/uplink | Port intre switch-uri / multiple VLAN-uri |
 | RPO | Recovery Point Objective |
 | RTO | Recovery Time Objective |
+
+# Politica Service Desk P1-P4, SLA si escaladare
+
+Repository-ul defineste acum o politica explicita pentru GLPI Service Desk, versionata in Git.
+
+Matricea de baza este:
+
+| Impact \ Urgency | High | Medium | Low |
+|---|---|---|---|
+| High | P1 Critical | P2 High | P3 Medium |
+| Medium | P2 High | P3 Medium | P4 Low |
+| Low | P3 Medium | P4 Low | P4 Low |
+
+SLA baseline:
+
+| Prioritate | TTO | TTR |
+|---|---:|---:|
+| P1 Critical | 15 min | 2 h |
+| P2 High | 30 min | 4 h |
+| P3 Medium | 4 h | 1 business day |
+| P4 Low | 1 business day | 3 business days |
+
+Model suport:
+
+```text
+L0  Self-Service / Knowledge Base
+L1  SD-L1-ServiceDesk
+L2  Network / Infrastructure / Security / Applications / Business Systems
+L3  Senior / IT Management / Vendor Coordination
+```
+
+Politica completa, regulile de escaladare si fisierele source-of-truth sunt in:
+
+- `docs/GLPI-PRIORITY-SLA-ESCALATION-MATRIX.md`
+- `config/glpi/servicedesk-policy.yaml`
+- `config/glpi/*.csv`
+
+Configurarea efectiva in GLPI trebuie validata prin teste accelerate de SLA si prin rapoarte de conformitate inainte de go-live.
