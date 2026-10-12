@@ -579,6 +579,7 @@ Configuration source of truth:
 
 - [Stage 2 implementation status](docs/STAGE-2-IMPLEMENTATION-STATUS.md)
 - [Priority / SLA / OLA / Escalation policy](docs/GLPI-PRIORITY-SLA-ESCALATION-MATRIX.md)
+- [Stage 2 configuration runbook](docs/GLPI-STAGE2-CONFIGURATION-RUNBOOK.md)
 - [GLPI Service Desk guide](docs/GLPI-SERVICEDESK.md)
 - [Escalation and reporting model](docs/GLPI-ESCALATION-REPORTING.md)
 - [Stage 2 ITSM plan](docs/STAGE-2-ITSM-SERVICEDESK.md)
