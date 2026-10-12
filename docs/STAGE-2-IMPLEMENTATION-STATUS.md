@@ -26,6 +26,8 @@ Last reviewed against repository `main`: October 2026.
 | L0/L1/L2/L3 groups | Specified as source of truth | `config/glpi/support-groups.csv` |
 | Concrete escalation rules | Specified as source of truth | `config/glpi/escalation-rules.csv` |
 | Canonical Service Desk policy | Specified as source of truth | `config/glpi/servicedesk-policy.yaml` |
+| Stage 2 GLPI configuration runbook | Implemented documentation | `docs/GLPI-STAGE2-CONFIGURATION-RUNBOOK.md` |
+| Service Desk policy CI validator | Implemented in code/config | `scripts/validate-servicedesk-policy.py`, `.github/workflows/validate.yml` |
 | Integration API design | Specified | `integration-api/README.md` |
 | Integration API OpenAPI contract | Specified | `integration-api/openapi.yaml` |
 | Integration API executable service | **Planned** | no application source code yet |
