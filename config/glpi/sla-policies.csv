@@ -1,0 +1,5 @@
+priority_code,priority_name,tto,ttr,calendar
+P1,Critical,15 minutes,2 hours,Critical-24x7
+P2,High,30 minutes,4 hours,Business-Hours
+P3,Medium,4 hours,1 business day,Business-Hours
+P4,Low,1 business day,3 business days,Business-Hours
