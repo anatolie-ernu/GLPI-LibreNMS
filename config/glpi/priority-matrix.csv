@@ -1,0 +1,10 @@
+impact,urgency,priority_code,priority_name
+High,High,P1,Critical
+High,Medium,P2,High
+High,Low,P3,Medium
+Medium,High,P2,High
+Medium,Medium,P3,Medium
+Medium,Low,P4,Low
+Low,High,P3,Medium
+Low,Medium,P4,Low
+Low,Low,P4,Low
