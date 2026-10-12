@@ -1,0 +1,21 @@
+priority,event,threshold,action
+P1,unowned,10 minutes,Notify L1 lead and specialist queue
+P1,TTO breach,15 minutes,Notify Service Desk Manager and Head of IT
+P1,TTR progress,30 minutes,Notify L2 lead and require action update
+P1,TTR 50%,60 minutes,Escalate L3 Senior and Head of IT
+P1,TTR 75%,90 minutes,Management visibility and engage vendor if applicable
+P1,TTR breach,120 minutes,Breach notification Major Incident review Problem candidate
+P2,unowned,20 minutes,Notify queue lead
+P2,TTO breach,30 minutes,Notify Service Desk Manager
+P2,TTR 50%,2 hours,Notify L2 lead
+P2,TTR 75%,3 hours,Notify L3 Senior and Head of IT visibility
+P2,TTR breach,4 hours,Management notification and action review
+P3,unowned,2 hours,Reminder L1 queue
+P3,TTO breach,4 hours,Notify Service Desk Manager
+P3,TTR 50%,50 percent,Notify assigned group lead
+P3,TTR 75%,75 percent,Escalation reminder and action plan update
+P3,TTR breach,1 business day,Mark overdue and report
+P4,TTO 75%,75 percent,Reminder owner or queue
+P4,TTO breach,1 business day,Notify Service Desk queue lead
+P4,unresolved,2 business days,Notify assigned group lead
+P4,TTR breach,3 business days,Mark overdue and backlog report
