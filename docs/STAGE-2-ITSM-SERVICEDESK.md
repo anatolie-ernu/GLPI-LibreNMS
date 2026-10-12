@@ -252,3 +252,18 @@ Stage 2 is considered operational when all of the following are demonstrated:
 8. Implement GLPI ticket creation/update.
 9. Add deduplication and recovery handling.
 10. Add end-to-end tests and production hardening.
+
+## Approved configuration baseline
+
+Stage 2 now has an explicit version-controlled baseline for implementation in GLPI:
+
+- `docs/GLPI-PRIORITY-SLA-ESCALATION-MATRIX.md`
+- `config/glpi/servicedesk-policy.yaml`
+- `config/glpi/priority-matrix.csv`
+- `config/glpi/sla-policies.csv`
+- `config/glpi/support-groups.csv`
+- `config/glpi/escalation-rules.csv`
+
+These files define the approved Impact x Urgency matrix, P1-P4 SLA values, L0/L1/L2/L3 groups, OLA targets, pending policy and concrete time-based escalation actions.
+
+They are the **configuration source of truth**. A running GLPI environment must be tested against the acceptance cases before Stage 2 can be marked complete.
