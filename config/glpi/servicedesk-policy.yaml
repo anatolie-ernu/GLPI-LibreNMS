@@ -1,0 +1,127 @@
+version: 1
+policy_name: GLPI Service Desk Priority/SLA/Escalation Baseline
+timezone: Europe/Chisinau
+
+priority_bands:
+  P1:
+    name: Critical
+    glpi_native: ["Major", "Very High"]
+    tto_minutes: 15
+    ttr_minutes: 120
+    calendar: Critical-24x7
+  P2:
+    name: High
+    glpi_native: ["High"]
+    tto_minutes: 30
+    ttr_minutes: 240
+    calendar: Business-Hours
+  P3:
+    name: Medium
+    glpi_native: ["Medium"]
+    tto_minutes: 240
+    ttr_business_days: 1
+    calendar: Business-Hours
+  P4:
+    name: Low
+    glpi_native: ["Low", "Very Low"]
+    tto_business_days: 1
+    ttr_business_days: 3
+    calendar: Business-Hours
+
+impact_urgency_matrix:
+  High:
+    High: P1
+    Medium: P2
+    Low: P3
+  Medium:
+    High: P2
+    Medium: P3
+    Low: P4
+  Low:
+    High: P3
+    Medium: P4
+    Low: P4
+
+calendars:
+  Business-Hours:
+    timezone: Europe/Chisinau
+    monday_friday: "08:00-17:00"
+    exclude_public_holidays: true
+  Critical-24x7:
+    enabled_only_if_on_call_exists: true
+
+groups:
+  L0:
+    - Self-Service-KB
+  L1:
+    - SD-L1-ServiceDesk
+  L2:
+    - SD-L2-Network
+    - SD-L2-Infrastructure
+    - SD-L2-Security
+    - SD-L2-Applications
+    - SD-L2-BusinessSystems
+  L3:
+    - SD-L3-Senior
+    - SD-L3-IT-Management
+    - SD-L3-Vendor-Coordination
+
+routing:
+  "Incident > Network": SD-L2-Network
+  "Incident > Infrastructure": SD-L2-Infrastructure
+  "Incident > Endpoint > Security": SD-L2-Security
+  "Incident > Application": SD-L2-Applications
+  "Incident > Business Systems": SD-L2-BusinessSystems
+
+overrides:
+  security_minimum_priority: P2
+  major_incident:
+    when:
+      impact: High
+      urgency: High
+    priority: P1
+
+pending_policy:
+  waiting_for_requester: "pause_if_approved"
+  waiting_for_approval: "pause_for_mandatory_request_approval"
+  waiting_for_maintenance_window: "pause_if_valid_and_documented"
+  waiting_for_vendor: "sla_continues"
+  waiting_for_external_dependency: "sla_continues"
+
+reporting:
+  required_dimensions:
+    - priority_band
+    - glpi_native_priority
+    - status
+    - category
+    - support_level
+    - assigned_group
+    - technician
+    - department
+    - location
+    - affected_asset
+    - source
+    - sla_tto_status
+    - sla_ttr_status
+    - escalation_level
+    - major_incident
+    - vendor_involvement
+  required_kpis:
+    - opened
+    - solved
+    - closed
+    - backlog
+    - backlog_aging
+    - mtta
+    - mttr
+    - sla_tto_compliance
+    - sla_ttr_compliance
+    - first_line_resolution
+    - reopen_rate
+    - escalation_count
+    - major_incident_count
+    - repeated_incidents
+    - top_affected_assets
+    - customer_satisfaction
+    - librenms_alert_to_ticket
+    - librenms_duplicate_suppression
