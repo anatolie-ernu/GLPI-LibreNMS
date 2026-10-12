@@ -32,6 +32,9 @@ jobs:
             bash -n "${script}"
           done
 
+      - name: Validate Service Desk policy
+        run: python3 scripts/validate-servicedesk-policy.py
+
       - name: Ensure secrets file is not tracked
         run: |
           if git ls-files --error-unmatch .env >/dev/null 2>&1; then
