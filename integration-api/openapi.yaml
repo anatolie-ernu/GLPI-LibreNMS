@@ -1,20 +1,37 @@
 openapi: 3.1.0
 info:
   title: GLPI LibreNMS Integration API
-  version: 0.1.0
+  version: 0.2.0
   description: >-
     Internal API for correlating GLPI assets and Service Desk tickets with
-    LibreNMS network state and alerts.
+    LibreNMS network state and alert/recovery events.
 servers:
-  - url: https://integration.example.internal
+  - url: http://integration-api:8088
 paths:
   /health:
     get:
-      summary: Health status
+      summary: Process health
       operationId: health
       responses:
         '200':
-          description: Service health
+          description: Local process health
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /ready:
+    get:
+      summary: Upstream readiness
+      operationId: ready
+      responses:
+        '200':
+          description: GLPI and LibreNMS are reachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: One or more upstream systems are unreachable
           content:
             application/json:
               schema:
@@ -23,6 +40,8 @@ paths:
     get:
       summary: Resolve endpoint network location by IP
       operationId: endpointByIp
+      security:
+        - apiKey: []
       parameters:
         - name: ip
           in: path
@@ -36,12 +55,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndpointResolution'
+        '401':
+          description: Invalid API key
         '404':
           description: Endpoint not found
+        '422':
+          description: Invalid IP address
   /v1/endpoints/by-mac/{mac}:
     get:
       summary: Resolve endpoint network location by MAC
       operationId: endpointByMac
+      security:
+        - apiKey: []
       parameters:
         - name: mac
           in: path
@@ -55,12 +80,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndpointResolution'
+        '401':
+          description: Invalid API key
         '404':
           description: Endpoint not found
+        '422':
+          description: Invalid MAC address
   /v1/assets/{asset_id}/network:
     get:
       summary: Enrich a GLPI asset with LibreNMS network context
       operationId: assetNetwork
+      security:
+        - apiKey: []
       parameters:
         - name: asset_id
           in: path
@@ -74,6 +105,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AssetNetworkResponse'
+        '401':
+          description: Invalid API key
         '404':
           description: Asset or network evidence not found
   /v1/events/librenms:
@@ -103,6 +136,8 @@ paths:
     get:
       summary: Get alert-to-ticket correlation state
       operationId: getCorrelation
+      security:
+        - apiKey: []
       parameters:
         - name: key
           in: path
@@ -116,10 +151,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Correlation'
+        '401':
+          description: Invalid API key
         '404':
           description: Correlation not found
 components:
   securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
     webhookSecret:
       type: apiKey
       in: header
@@ -142,20 +183,23 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: [integer, 'null']
         hostname:
-          type: string
+          type: [string, 'null']
     PortRef:
       type: object
       properties:
         id:
-          type: integer
+          type: [integer, 'null']
         ifName:
-          type: string
+          type: [string, 'null']
         status:
-          type: string
+          type: [string, 'null']
+        ifAlias:
+          type: [string, 'null']
     EndpointResolution:
       type: object
+      required: [mac, confidence, evidence_sources]
       properties:
         hostname:
           type: [string, 'null']
@@ -164,9 +208,13 @@ components:
         mac:
           type: string
         device:
-          $ref: '#/components/schemas/DeviceRef'
+          oneOf:
+            - $ref: '#/components/schemas/DeviceRef'
+            - type: 'null'
         port:
-          $ref: '#/components/schemas/PortRef'
+          oneOf:
+            - $ref: '#/components/schemas/PortRef'
+            - type: 'null'
         vlan:
           type: [integer, 'null']
         confidence:
@@ -181,6 +229,7 @@ components:
             type: string
     AssetNetworkResponse:
       type: object
+      required: [asset_id, endpoint]
       properties:
         asset_id:
           type: integer
@@ -188,21 +237,24 @@ components:
           $ref: '#/components/schemas/EndpointResolution'
     LibreNmsEvent:
       type: object
-      required: [alert_id, rule_id, device_id, hostname, state]
+      required: [alert_id, device_id, hostname, state]
       properties:
         alert_id:
           type: integer
         rule_id:
           type: integer
+          default: 0
         device_id:
           type: integer
         hostname:
           type: string
         severity:
-          type: string
+          type: [string, 'null']
         state:
-          type: string
-          description: Alert or recovery state from LibreNMS transport payload
+          oneOf:
+            - type: string
+            - type: integer
+            - type: boolean
         timestamp:
           type: [string, 'null']
           format: date-time
@@ -215,7 +267,7 @@ components:
           additionalProperties: true
     EventAccepted:
       type: object
-      required: [accepted, correlation_key]
+      required: [accepted, correlation_key, action]
       properties:
         accepted:
           type: boolean
@@ -228,6 +280,13 @@ components:
           enum: [created, updated, recovered, ignored]
     Correlation:
       type: object
+      required:
+        - key
+        - librenms_alert_id
+        - glpi_ticket_id
+        - state
+        - created_at
+        - updated_at
       properties:
         key:
           type: string
