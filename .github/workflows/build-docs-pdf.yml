@@ -68,5 +68,7 @@ jobs:
             echo "PDF is unchanged."
           else
             git commit -m "docs: publish generated complete PDF guide"
-            git push
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
           fi
