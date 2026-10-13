@@ -119,3 +119,28 @@ GLPI and LibreNMS do not require direct container-to-container communication in 
 - monitoring/alerts
 - optional syslog and SNMP traps
 - vulnerability scanning and CI validation
+
+## Stage 1.5 canonical Docker topology
+
+The current canonical front door is Nginx Proxy Manager:
+
+```text
+Clients
+  |
+  +--> 80/443 --> Nginx Proxy Manager
+                    |
+                    +--> GLPI --> glpi-backend --> MySQL
+                    |
+                    +--> LibreNMS --> librenms-backend --> MariaDB + Redis
+                                             |
+                                             +--> Dispatcher
+```
+
+Network isolation:
+
+- `proxy-net` — NPM, GLPI and LibreNMS front-end connectivity;
+- `glpi-backend` — internal-only GLPI database network;
+- `librenms-backend` — internal-only LibreNMS database/cache network;
+- `socket-net` — internal-only Docker Socket Proxy network used only by optional auto-discovery.
+
+The only supported Compose file is `docker-compose.yml`.
