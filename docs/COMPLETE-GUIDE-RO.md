@@ -915,3 +915,34 @@ Politica completa, regulile de escaladare si fisierele source-of-truth sunt in:
 - `config/glpi/*.csv`
 
 Configurarea efectiva in GLPI trebuie validata prin teste accelerate de SLA si prin rapoarte de conformitate inainte de go-live.
+
+# Integration API executabil — Stage 2
+
+Repository-ul include acum serviciul FastAPI din `integration-api/`.
+
+Functii implementate:
+
+```text
+IP -> ARP -> MAC -> FDB -> switch/port/VLAN
+MAC -> FDB -> switch/port/VLAN
+GLPI asset -> NetworkPort MAC -> LibreNMS evidence
+LibreNMS alert -> GLPI Ticket
+duplicate alert -> ignored
+LibreNMS recovery -> ITILFollowup pe ticketul initial
+```
+
+Serviciul ruleaza optional prin profilul Compose:
+
+```text
+integration
+```
+
+Starea de corelare este persistata in `/data/correlations.db`.
+
+Pentru configurare si pilot:
+
+- `integration-api/README.md`
+- `integration-api/openapi.yaml`
+- `docs/STAGE-2-IMPLEMENTATION-STATUS.md`
+
+Implementarea trebuie validata pe instanta GLPI/LibreNMS pilot inainte de Productie.
