@@ -12,9 +12,10 @@ Last reviewed against repository `main`: October 2026.
 
 | Capability | Status | Repository evidence |
 |---|---|---|
-| Docker GLPI + LibreNMS stack | Implemented in code/config | `docker-compose.yml`, `compose.yml`, installer/config scripts |
+| Canonical hardened Docker stack | Implemented in code/config | `docker-compose.yml`, `.env.example`, installer/config scripts |
 | Nginx Proxy Manager | Implemented in code/config | `docker-compose.yml`, installer/configuration docs |
-| NPM auto-discovery | Implemented in code/config | `npm-auto-discovery.py`, `Dockerfile.discovery` |
+| Production hardening / Compose consolidation | Implemented in code/config | `docs/PRODUCTION-HARDENING.md`, legacy `compose.yml` removed |
+| NPM auto-discovery | Implemented in code/config, opt-in | `npm-auto-discovery.py`, `Dockerfile.discovery`, Docker Socket Proxy profile |
 | Cisco SNMPv3 baseline | Specified | `docs/CISCO-SNMPV3.md`, `config/cisco/` |
 | MikroTik SNMPv3 baseline | Specified | `docs/MIKROTIK-SNMPV3.md`, `config/mikrotik/` |
 | GLPI Agent rollout | Specified | `docs/GLPI-AGENT.md` |
