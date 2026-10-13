@@ -2,9 +2,23 @@
 title: "GLPI + LibreNMS"
 subtitle: "Ghid complet de instalare, configurare si operare pentru Cisco si MikroTik"
 author: "anatolie-ernu/GLPI-LibreNMS"
-date: "14 septembrie 2026"
+date: "13 octombrie 2026"
 lang: ro
 ---
+
+# Actualizare Stage 1.5 — arhitectura Docker canonica
+
+Incepand cu 13 octombrie 2026, singurul fisier Compose suportat este `docker-compose.yml`.
+
+Arhitectura canonica include Nginx Proxy Manager, imaginea oficiala GLPI, baza GLPI separata, LibreNMS cu baza separata, Redis si Dispatcher. MySQL/MariaDB/Redis nu mai sunt publicate pe host. Accesul direct GLPI/LibreNMS si NPM Admin este legat implicit la loopback, iar auto-discovery este dezactivat implicit si, cand este activat, foloseste un Docker Socket Proxy restrictionat.
+
+Documente obligatorii pentru deployment:
+
+- `docs/PRODUCTION-HARDENING.md`
+- `docs/MIGRATION-LEGACY-COMPOSE.md`
+- `docs/INSTALL.md`
+
+Orice sectiune mai veche din acest ghid care descrie o arhitectura diferita este supersedata de aceasta politica canonica.
 
 # Despre acest document
 
@@ -123,7 +137,7 @@ GLPI-LibreNMS/
 ├── README.md
 ├── SECURITY.md
 ├── LICENSE
-├── compose.yml
+├── docker-compose.yml
 ├── .env.example
 ├── docs/
 │   ├── INSTALL.md
@@ -566,7 +580,7 @@ Backup-ul include:
 - LibreNMS database dump;
 - `/var/glpi` persistent data;
 - `/data` LibreNMS persistent data;
-- `compose.yml`;
+- `docker-compose.yml`;
 - template `.env`;
 - `SHA256SUMS`.
 
