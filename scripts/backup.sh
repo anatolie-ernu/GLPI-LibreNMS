@@ -30,6 +30,14 @@ echo "Backing up NPM data..."
 docker compose -f docker-compose.yml exec -T nginx-proxy-manager sh -lc 'tar -C /data -czf - .' >"$DEST/npm-data.tar.gz"
 docker compose -f docker-compose.yml exec -T nginx-proxy-manager sh -lc 'tar -C /etc/letsencrypt -czf - .' >"$DEST/npm-letsencrypt.tar.gz"
 
+case "${INTEGRATION_ENABLED:-false}" in
+  true|TRUE|1|yes|YES)
+    echo "Backing up Integration API correlation state..."
+    docker compose -f docker-compose.yml --profile integration exec -T integration-api \
+      sh -lc 'tar -C /data -czf - .' >"$DEST/integration-correlations.tar.gz"
+    ;;
+esac
+
 cp .env.example "$DEST/env-template.txt"
 cp docker-compose.yml "$DEST/docker-compose.yml"
 
