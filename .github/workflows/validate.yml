@@ -26,6 +26,15 @@ jobs:
       - name: Validate canonical stack and policies
         run: bash scripts/validate.sh
 
+      - name: Run integration API unit tests
+        run: |
+          python3 -m pip install -r integration-api/requirements-dev.txt
+          cd integration-api
+          pytest -q
+
+      - name: Build integration API container
+        run: docker compose -f docker-compose.yml --profile integration build integration-api
+
       - name: Ensure secret environment is not tracked
         run: |
           if git ls-files --error-unmatch .env >/dev/null 2>&1; then
