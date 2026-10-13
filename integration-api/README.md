@@ -1,103 +1,27 @@
 # GLPI <-> LibreNMS Integration API
 
-## Purpose
+## Status
 
-This service is the correlation layer between GLPI Service Desk / CMDB and LibreNMS network monitoring.
+**Executable implementation available — pilot validation required.**
 
-It must not replace either product's responsibilities.
-
-```text
-GLPI                        LibreNMS
-Assets / Tickets            Network state / Alerts
-      \                        /
-       \                      /
-        +-- Integration API --+
-```
-
-## Initial responsibilities
-
-1. Resolve endpoint network location by MAC or IP.
-2. Enrich a GLPI ticket/asset with current LibreNMS evidence.
-3. Receive LibreNMS alert webhooks/API transports.
-4. Create or update a GLPI incident.
-5. Deduplicate repeated alerts.
-6. Correlate alert recovery with the original ticket.
-7. Record audit information for every automated action.
-
-## Non-responsibilities
-
-The first implementation must not:
-
-- modify Cisco/MikroTik configuration;
-- perform SNMP writes;
-- shut/no-shut switch ports;
-- automatically remediate incidents;
-- expose GLPI or LibreNMS credentials to clients;
-- directly access GLPI/LibreNMS databases.
-
-Use supported HTTP APIs only.
-
-## Proposed stack
-
-Recommended implementation:
+This service is the internal correlation layer between GLPI Service Desk / CMDB and LibreNMS.
 
 ```text
-Python 3.12+
-FastAPI
-httpx
-pydantic
-Redis (optional for locks/cache)
-PostgreSQL or SQLite only if durable correlation state is required
+GLPI Assets / Tickets
+        |
+        +------ Integration API ------ LibreNMS
+                 |
+                 +-- IP/MAC -> switch/port/VLAN
+                 +-- alert -> GLPI incident
+                 +-- duplicate suppression
+                 +-- recovery -> GLPI follow-up
 ```
 
-For the first prototype, durable alert-to-ticket correlation can be implemented with a small dedicated database. Do not store this state in application container files if production resilience is required.
-
-## Authentication
-
-### Incoming calls
-
-Use one of:
-
-- reverse-proxy authentication;
-- dedicated webhook secret/header;
-- mTLS for higher-assurance internal deployments.
-
-### Upstream APIs
-
-- LibreNMS: API token in `X-Auth-Token`.
-- GLPI: dedicated integration credentials/tokens according to the deployed GLPI API configuration.
-
-All secrets are environment variables or external secrets. Never commit them.
-
-## Environment contract
-
-Example names only:
-
-```env
-INTEGRATION_BIND=0.0.0.0
-INTEGRATION_PORT=8088
-
-LIBRENMS_BASE_URL=https://librenms.example.internal
-LIBRENMS_API_TOKEN=SECRET
-
-GLPI_BASE_URL=https://glpi.example.internal
-GLPI_APP_TOKEN=SECRET
-GLPI_USER_TOKEN=SECRET
-
-WEBHOOK_SECRET=SECRET
-LOG_LEVEL=INFO
-```
-
-These values must not be added to the repository in a real `.env` file.
-
-## Endpoint design
-
-See `openapi.yaml` for the baseline contract.
-
-Primary endpoints:
+## Implemented endpoints
 
 ```text
 GET  /health
+GET  /ready
 GET  /v1/endpoints/by-ip/{ip}
 GET  /v1/endpoints/by-mac/{mac}
 GET  /v1/assets/{asset_id}/network
@@ -105,59 +29,124 @@ POST /v1/events/librenms
 GET  /v1/correlations/{key}
 ```
 
-## Endpoint resolution algorithm
+Read/correlation endpoints require:
 
-### By MAC
+```text
+X-API-Key: <INTEGRATION_API_KEY>
+```
 
-1. Normalize the MAC address.
-2. Query LibreNMS switching/FDB data.
-3. Identify all matching FDB entries.
-4. Exclude obvious upstream/uplink paths when topology evidence allows it.
-5. Select or rank the likely edge/access port.
-6. Resolve device, interface, VLAN and timestamps.
-7. Return evidence and confidence, not only a final string.
+LibreNMS webhook ingestion requires:
 
-Example:
+```text
+X-Webhook-Secret: <WEBHOOK_SECRET>
+```
+
+## Current API choices
+
+### LibreNMS
+
+The implementation uses the stable documented LibreNMS API v0 with:
+
+```http
+Authorization: Bearer <token>
+```
+
+Used routes include:
+
+```text
+/api/v0
+/api/v0/resources/ip/arp/{query}
+/api/v0/resources/fdb/{mac}
+/api/v0/ports/{port_id}?with=device,vlans
+/api/v0/devices/{device_id}
+```
+
+### GLPI
+
+The first executable implementation uses GLPI's legacy REST API v1 for ITSM write operations:
+
+```text
+/apirest.php/initSession/
+/apirest.php/Ticket/
+/apirest.php/ITILFollowup/
+```
+
+This is deliberate for the pilot because the legacy API has the established generic item write contract. GLPI 11's high-level API v2 uses OAuth2 and will be evaluated against the deployed pilot before migration.
+
+## Environment
+
+The root `.env` contains the integration settings.
+
+Minimum:
+
+```env
+INTEGRATION_ENABLED=true
+INTEGRATION_API_KEY=<generated/private>
+WEBHOOK_SECRET=<generated/private>
+
+LIBRENMS_BASE_URL=http://librenms:8000
+LIBRENMS_API_TOKEN=<LibreNMS API token>
+LIBRENMS_VERIFY_TLS=false
+
+GLPI_BASE_URL=http://glpi
+GLPI_API_MODE=legacy_v1
+GLPI_APP_TOKEN=<GLPI API client app token>
+GLPI_USER_TOKEN=<dedicated GLPI integration user token>
+GLPI_VERIFY_TLS=false
+GLPI_ASSET_ITEMTYPE=Computer
+GLPI_DEFAULT_GROUP_ID=
+```
+
+`scripts/init-env.sh` generates the internal API key and webhook secret. The LibreNMS/GLPI tokens must be created in the applications and inserted only into the private `.env`.
+
+Deploy:
+
+```bash
+bash scripts/validate.sh
+bash scripts/deploy.sh
+```
+
+The service runs as Compose profile `integration` and is not host-published. LibreNMS reaches it on the Docker network at:
+
+```text
+http://integration-api:8088
+```
+
+## LibreNMS API transport
+
+LibreNMS supports an API alert transport with custom headers/body.
+
+Suggested transport:
+
+```text
+Method: POST
+URL:
+http://integration-api:8088/v1/events/librenms
+
+Header:
+X-Webhook-Secret: <WEBHOOK_SECRET>
+Content-Type: application/json
+```
+
+Example body using LibreNMS transport/template variables:
 
 ```json
 {
-  "mac": "00:25:90:AB:CD:EF",
-  "device": {
-    "id": 42,
-    "hostname": "HQ-ACCESS-SW-04"
-  },
-  "port": {
-    "id": 1002,
-    "ifName": "Gi1/0/31",
-    "status": "up"
-  },
-  "vlan": 129,
-  "confidence": "high",
-  "last_seen": "2026-09-14T15:42:00+03:00"
+  "alert_id": "{{ $id }}",
+  "rule_id": 0,
+  "device_id": "{{ $device_id }}",
+  "hostname": "{{ $hostname }}",
+  "severity": "{{ $severity }}",
+  "state": "{{ $state }}",
+  "timestamp": "{{ $timestamp }}",
+  "fault_object": "{{ $name }}",
+  "message": "{{ $msg }}"
 }
 ```
 
-### By IP
+For installations where the API transport expects variables without the `$alert->` prefix, use the variables exactly as offered by the LibreNMS transport UI. Validate the rendered JSON with one pilot alert and one recovery event.
 
-1. Normalize and validate the IP.
-2. Resolve IP -> MAC using available LibreNMS ARP/NAC data or GLPI asset metadata.
-3. Run the MAC workflow.
-4. Return the source used for every correlation step.
-
-## Alert -> ticket algorithm
-
-Input from LibreNMS:
-
-```text
-alert_id
-rule_id
-device_id
-hostname
-severity
-state
-timestamp
-fault information
-```
+## Correlation and deduplication
 
 Correlation key:
 
@@ -165,107 +154,99 @@ Correlation key:
 librenms:<device_id>:<rule_id>:<fault_object>
 ```
 
-Processing:
+If the transport does not provide a numeric rule ID, `rule_id=0` is accepted and the rule name can be placed in `fault_object`.
+
+Behavior:
 
 ```text
-Receive alert
-  |
-  +-- authenticate webhook
-  +-- validate payload
-  +-- calculate correlation key
-  +-- lookup existing open correlation
-          |
-          +-- exists -> update existing GLPI ticket
-          |
-          +-- absent -> create new GLPI ticket
-                         store ticket ID
-```
+new problem
+  -> create one GLPI Ticket
+  -> store alert/ticket correlation
 
-On recovery:
+same problem again
+  -> ignored (no duplicate ticket)
 
-```text
-Recovery event
-  -> locate correlation
-  -> add GLPI follow-up
+recovery
+  -> add ITILFollowup to original ticket
   -> mark correlation recovered
-  -> optional policy-controlled ticket resolution
+
+same recovery again
+  -> ignored
 ```
 
-## Deduplication requirements
+Automatic ticket closure is intentionally not implemented in the first version.
 
-- repeated poll notifications must not create repeated tickets;
-- concurrent identical webhook deliveries must be safe;
-- correlation operations should be transactional or protected by a lock;
-- ticket creation failure must not leave a false successful correlation record;
-- retries must be bounded and observable.
+## Persistence
 
-## Logging
-
-Log structured operational events without secrets:
+Correlation state is stored in SQLite:
 
 ```text
-request_id
-correlation_key
-librenms_alert_id
-glpi_ticket_id
-action
-result
-latency
+/data/correlations.db
 ```
 
-Never log API tokens, passwords, session tokens or full authorization headers.
+and persisted in the Compose volume `integration_data`.
 
-## Health/readiness
+The first version is intentionally one Uvicorn worker. For HA/multi-replica operation, move correlation state/locking to PostgreSQL or another shared transactional store.
 
-`GET /health` should report only non-sensitive state.
+## IP/MAC resolution
 
-Example:
+IP lookup:
 
-```json
-{
-  "status": "ok",
-  "librenms": "reachable",
-  "glpi": "reachable"
-}
+```text
+IP -> LibreNMS ARP -> MAC -> FDB -> port/device
 ```
 
-A future `/ready` endpoint can fail when required upstream APIs are unavailable.
+MAC lookup:
 
-## Testing strategy
+```text
+MAC -> LibreNMS FDB -> candidate ports -> port/device details
+```
 
-### Unit tests
+If multiple FDB candidates exist, the service returns a conservative confidence value rather than claiming certainty.
 
-- MAC normalization;
-- correlation key construction;
-- severity mapping;
-- deduplication logic;
-- recovery state transitions.
+## Asset enrichment
 
-### Contract tests
+For:
 
-Mock GLPI and LibreNMS APIs.
+```text
+GET /v1/assets/{asset_id}/network
+```
 
-### Integration tests
+the first implementation treats the GLPI asset as `Computer` unless `GLPI_ASSET_ITEMTYPE` is changed. It reads associated `NetworkPort` records and resolves the first MAC with usable LibreNMS evidence.
 
-Against staging instances:
+## Tests
 
-- known MAC -> expected Cisco port;
-- known MAC -> expected MikroTik bridge port;
-- alert -> one ticket;
-- duplicate alert -> same ticket;
-- recovery -> same ticket follow-up;
-- upstream timeout -> controlled retry/failure.
+```bash
+cd integration-api
+python3 -m pip install -r requirements-dev.txt
+pytest -q
+```
 
-## Security requirements
+CI also builds the integration container.
 
-- TLS in production.
-- Least-privilege API tokens.
-- IP allowlist at reverse proxy/firewall.
-- Webhook authentication.
-- Dependency scanning.
-- Container runs as non-root where practical.
-- Read-only filesystem where practical.
-- No Docker socket mount.
-- Rate limiting for webhook endpoints.
-- Request size limits.
-- Audit log for automatic ITSM actions.
+## Security
+
+- no direct DB access to GLPI or LibreNMS;
+- no SNMP write;
+- no switch configuration actions;
+- API/webhook secrets required;
+- tokens only in private environment/secrets;
+- no host port published for the integration API;
+- non-root container;
+- no Docker socket;
+- outbound access only to GLPI/LibreNMS APIs;
+- logs must not include tokens.
+
+## Pilot acceptance
+
+- [ ] `/ready` reports both upstream systems reachable.
+- [ ] known IP resolves to expected switch/port.
+- [ ] known MAC resolves to expected switch/port.
+- [ ] GLPI asset MAC resolves to network evidence.
+- [ ] one LibreNMS alert creates exactly one GLPI ticket.
+- [ ] duplicate alert creates no second ticket.
+- [ ] recovery adds follow-up to the original ticket.
+- [ ] repeated recovery is ignored.
+- [ ] correlation survives container restart.
+- [ ] backup includes correlation state.
+- [ ] GLPI/LibreNMS tokens are least privilege.
