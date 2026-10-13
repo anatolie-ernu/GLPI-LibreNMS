@@ -1,22 +1,19 @@
 FROM python:3.11-slim
 
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
-# Dependențe sistem
-RUN apt-get update && apt-get install -y \
-    curl \
-    jq \
-    && rm -rf /var/lib/apt/lists/*
+RUN groupadd --system app && useradd --system --gid app --home-dir /app app
 
-# Python dependencies
 COPY requirements-discovery.txt .
 RUN pip install --no-cache-dir -r requirements-discovery.txt
 
-# Copy script
-COPY npm-auto-discovery.py .
+COPY --chown=app:app npm-auto-discovery.py .
 
-# Health check endpoint
-RUN pip install --no-cache-dir flask
+USER app
 
-# Run
+EXPOSE 8888
+
 CMD ["python", "npm-auto-discovery.py"]
