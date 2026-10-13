@@ -31,9 +31,9 @@ Last reviewed against repository `main`: October 2026.
 | Service Desk policy CI validator | Implemented in code/config | `scripts/validate-servicedesk-policy.py`, `.github/workflows/validate.yml` |
 | Integration API design | Specified | `integration-api/README.md` |
 | Integration API OpenAPI contract | Specified | `integration-api/openapi.yaml` |
-| Integration API executable service | **Planned** | no application source code yet |
-| LibreNMS -> GLPI automatic ticket creation | **Planned** | contract/design only |
-| Alert deduplication/recovery correlation | **Planned** | contract/design only |
+| Integration API executable service | Implemented in code/config; pilot validation required | `integration-api/app/`, `integration-api/Dockerfile`, Compose `integration` profile |
+| LibreNMS -> GLPI automatic ticket creation | Implemented in code/config; pilot validation required | `integration-api/app/service.py`, `integration-api/app/glpi.py` |
+| Alert deduplication/recovery correlation | Implemented in code/config; pilot validation required | SQLite correlation store + unit tests |
 | AD/LDAP pilot configuration | **Planned for deployment** | procedure documented, no environment-specific secrets/config committed |
 | GLPI dashboard configuration | **Planned for deployment** | KPIs/dashboard definitions documented |
 | Automated GLPI policy provisioning | **Planned** | YAML/CSV source exists; no provisioning script yet |
@@ -50,9 +50,9 @@ Last reviewed against repository `main`: October 2026.
 7. Configure Service Desk Manager and Head of IT dashboards.
 8. Perform accelerated SLA tests.
 9. Configure AD/LDAP pilot.
-10. Implement the executable Integration API service.
-11. Implement LibreNMS enrichment and alert-to-ticket workflow.
-12. Add end-to-end automated tests and deployment evidence.
+10. Configure Integration API credentials in the pilot environment.
+11. Validate LibreNMS enrichment and alert-to-ticket workflow against live pilot systems.
+12. Add end-to-end deployment evidence and decide whether to migrate GLPI writes to API v2.
 
 ## Definition of Stage 2 complete
 
