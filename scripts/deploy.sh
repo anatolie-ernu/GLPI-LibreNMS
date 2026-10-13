@@ -7,20 +7,36 @@ cd "$(dirname "$0")/.."
 
 bash scripts/validate.sh
 
-auto="$(awk -F= '/^AUTO_DISCOVERY_ENABLED=/{print tolower($2)}' .env | tr -d '\r')"
+read_flag() {
+  awk -F= -v key="$1" '$1 == key {print tolower($2)}' .env | tr -d '\r'
+}
 
-echo "Pulling base images..."
-docker compose -f docker-compose.yml pull
+auto="$(read_flag AUTO_DISCOVERY_ENABLED)"
+integration="$(read_flag INTEGRATION_ENABLED)"
+
+profile_args=()
+if [[ "$auto" == "true" || "$auto" == "1" || "$auto" == "yes" ]]; then
+  profile_args+=(--profile auto-discovery)
+fi
+if [[ "$integration" == "true" || "$integration" == "1" || "$integration" == "yes" ]]; then
+  profile_args+=(--profile integration)
+fi
+
+echo "Pulling images..."
+docker compose -f docker-compose.yml "${profile_args[@]}" pull || true
 
 if [[ "$auto" == "true" || "$auto" == "1" || "$auto" == "yes" ]]; then
   echo "Building NPM auto-discovery image..."
   docker compose -f docker-compose.yml --profile auto-discovery build npm-auto-discovery
-  echo "Starting base stack + auto-discovery profile..."
-  docker compose -f docker-compose.yml --profile auto-discovery up -d --remove-orphans
-else
-  echo "Starting base stack..."
-  docker compose -f docker-compose.yml up -d --remove-orphans
 fi
+
+if [[ "$integration" == "true" || "$integration" == "1" || "$integration" == "yes" ]]; then
+  echo "Building GLPI-LibreNMS integration API..."
+  docker compose -f docker-compose.yml --profile integration build integration-api
+fi
+
+echo "Starting stack..."
+docker compose -f docker-compose.yml "${profile_args[@]}" up -d --remove-orphans
 
 echo
 bash scripts/status.sh
