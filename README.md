@@ -232,20 +232,26 @@ Switch / Port / VLAN
 
 ## Integration API
 
-The API contract is present, but the executable service is **not yet implemented**.
+An executable **FastAPI** integration service is included as the optional Compose profile `integration`.
 
-Current files:
+Implemented:
 
-- `integration-api/README.md`
-- `integration-api/openapi.yaml`
-
-Planned responsibilities:
-
-- IP/MAC -> switch/port/VLAN enrichment;
+- IP -> ARP -> MAC -> FDB -> switch/port/VLAN lookup;
+- MAC -> FDB -> switch/port/VLAN lookup;
+- GLPI asset MAC -> LibreNMS network evidence;
 - LibreNMS alert -> GLPI incident;
-- deduplication;
-- recovery correlation;
-- audit logging.
+- duplicate alert suppression;
+- recovery -> follow-up on the original GLPI ticket;
+- persistent correlation state;
+- API/webhook authentication;
+- unit tests and CI container build.
+
+See:
+
+- [Integration API README](integration-api/README.md)
+- [OpenAPI contract](integration-api/openapi.yaml)
+
+It is **implemented in code but still requires pilot validation against the actual GLPI and LibreNMS instances** before Production.
 
 ---
 
