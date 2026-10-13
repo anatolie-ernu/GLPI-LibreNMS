@@ -30,6 +30,8 @@ secret() {
 
 sed -i "s|^GLPI_DB_PASSWORD=.*|GLPI_DB_PASSWORD=$(secret)|" .env
 sed -i "s|^LIBRENMS_DB_PASSWORD=.*|LIBRENMS_DB_PASSWORD=$(secret)|" .env
+sed -i "s|^INTEGRATION_API_KEY=.*|INTEGRATION_API_KEY=$(secret)|" .env
+sed -i "s|^WEBHOOK_SECRET=.*|WEBHOOK_SECRET=$(secret)|" .env
 sed -i "s|^PUID=.*|PUID=$(id -u)|" .env
 sed -i "s|^PGID=.*|PGID=$(id -g)|" .env
 
@@ -41,5 +43,5 @@ if [[ -n "$bind_ip" ]]; then
 fi
 
 chmod 600 .env
-echo "Created .env with generated database passwords."
+echo "Created .env with generated database passwords and integration API secrets."
 echo "Auto-discovery remains disabled until NPM API credentials are configured."
