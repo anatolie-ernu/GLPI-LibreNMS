@@ -37,7 +37,7 @@ class AssetNetworkResponse(BaseModel):
 
 class LibreNmsEvent(BaseModel):
     alert_id: int
-    rule_id: int
+    rule_id: int = 0
     device_id: int
     hostname: str
     severity: str | None = None
