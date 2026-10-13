@@ -19,23 +19,14 @@ jobs:
       - name: Prepare CI environment
         run: |
           cp .env.example .env
-          sed -i 's/CHANGE_ME_STRONG_GLPI_DB_PASSWORD/CI_GLPI_PASSWORD_ChangeMe123!/' .env
-          sed -i 's/CHANGE_ME_STRONG_LIBRENMS_DB_PASSWORD/CI_LIBRENMS_PASSWORD_ChangeMe123!/' .env
+          sed -i 's/CHANGE_ME_GLPI_DB_PASSWORD/CI_GLPI_DB_0123456789abcdef0123456789abcdef/' .env
+          sed -i 's/CHANGE_ME_LIBRENMS_DB_PASSWORD/CI_LIBRENMS_DB_0123456789abcdef0123456789abcdef/' .env
+          chmod 600 .env
 
-      - name: Validate Docker Compose
-        run: docker compose config -q
+      - name: Validate canonical stack and policies
+        run: bash scripts/validate.sh
 
-      - name: Validate shell syntax
-        run: |
-          for script in scripts/*.sh; do
-            echo "Checking ${script}"
-            bash -n "${script}"
-          done
-
-      - name: Validate Service Desk policy
-        run: python3 scripts/validate-servicedesk-policy.py
-
-      - name: Ensure secrets file is not tracked
+      - name: Ensure secret environment is not tracked
         run: |
           if git ls-files --error-unmatch .env >/dev/null 2>&1; then
             echo "ERROR: .env must never be committed"
