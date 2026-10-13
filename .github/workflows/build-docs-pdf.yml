@@ -8,8 +8,13 @@ on:
       - 'docs/*.md'
       - 'config/**'
       - 'scripts/**'
-      - 'compose.yml'
+      - 'docker-compose.yml'
       - '.env.example'
+      - 'install.sh'
+      - 'configure.sh'
+      - 'START.sh'
+      - 'npm-auto-discovery.py'
+      - 'Dockerfile.discovery'
       - '.github/workflows/build-docs-pdf.yml'
   workflow_dispatch:
 
