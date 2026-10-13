@@ -50,28 +50,28 @@ BACKUP=/opt/backups/glpi-librenms/20260914_150000
 Stop the application services while keeping database containers available when required:
 
 ```bash
-docker compose stop glpi librenms librenms-dispatcher
+docker compose -f docker-compose.yml stop glpi librenms librenms-dispatcher
 ```
 
 Restore GLPI data:
 
 ```bash
 gzip -dc "$BACKUP/glpi-data.tar.gz" | \
-  docker compose run --rm -T glpi sh -lc 'rm -rf /var/glpi/* && tar -C /var/glpi -xzf -'
+  docker compose -f docker-compose.yml run --rm -T glpi sh -lc 'rm -rf /var/glpi/* && tar -C /var/glpi -xzf -'
 ```
 
 Restore LibreNMS data:
 
 ```bash
 gzip -dc "$BACKUP/librenms-data.tar.gz" | \
-  docker compose run --rm -T librenms sh -lc 'rm -rf /data/* && tar -C /data -xzf -'
+  docker compose -f docker-compose.yml run --rm -T librenms sh -lc 'rm -rf /data/* && tar -C /data -xzf -'
 ```
 
 Restore GLPI database:
 
 ```bash
 gzip -dc "$BACKUP/glpi-db.sql.gz" | \
-  docker compose exec -T glpi-db sh -lc \
+  docker compose -f docker-compose.yml exec -T glpi-db sh -lc \
   'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
 ```
 
@@ -79,14 +79,14 @@ Restore LibreNMS database:
 
 ```bash
 gzip -dc "$BACKUP/librenms-db.sql.gz" | \
-  docker compose exec -T librenms-db sh -lc \
+  docker compose -f docker-compose.yml exec -T librenms-db sh -lc \
   'mariadb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"'
 ```
 
 Start services:
 
 ```bash
-docker compose up -d
+docker compose -f docker-compose.yml up -d
 bash scripts/status.sh
 ```
 
@@ -110,9 +110,19 @@ LibreNMS:
 LibreNMS validation command:
 
 ```bash
-docker compose exec librenms lnms validate
+docker compose -f docker-compose.yml exec librenms lnms validate
 ```
 
 ## Restore testing
 
 A backup that has never been restored is not proven. Schedule periodic restore tests to an isolated Docker host and record RPO/RTO results.
+
+
+## NPM data and certificates
+
+The canonical backup script also archives Nginx Proxy Manager:
+
+- `/data`;
+- `/etc/letsencrypt`.
+
+Use `bash scripts/backup.sh` as the preferred backup entry point. Test NPM restore together with GLPI and LibreNMS during disaster-recovery exercises.
