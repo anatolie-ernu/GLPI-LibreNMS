@@ -14,12 +14,31 @@ fi
 command -v docker >/dev/null 2>&1 || { echo "ERROR: docker is not installed"; exit 1; }
 docker compose version >/dev/null
 
-auto="$(awk -F= '/^AUTO_DISCOVERY_ENABLED=/{print tolower($2)}' .env | tr -d '\r')"
+read_value() {
+  awk -F= -v key="$1" '$1 == key {sub(/^[^=]*=/,""); print}' .env | tr -d '\r'
+}
+read_flag() {
+  read_value "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+auto="$(read_flag AUTO_DISCOVERY_ENABLED)"
 if [[ "$auto" == "true" || "$auto" == "1" || "$auto" == "yes" ]]; then
-  npm_email="$(awk -F= '/^NPM_API_EMAIL=/{sub(/^[^=]*=/,""); print}' .env)"
-  npm_pass="$(awk -F= '/^NPM_API_PASSWORD=/{sub(/^[^=]*=/,""); print}' .env)"
-  [[ -n "$npm_email" && -n "$npm_pass" ]] || {
+  [[ -n "$(read_value NPM_API_EMAIL)" && -n "$(read_value NPM_API_PASSWORD)" ]] || {
     echo "ERROR: AUTO_DISCOVERY_ENABLED=true requires NPM_API_EMAIL and NPM_API_PASSWORD."
+    exit 1
+  }
+fi
+
+integration="$(read_flag INTEGRATION_ENABLED)"
+if [[ "$integration" == "true" || "$integration" == "1" || "$integration" == "yes" ]]; then
+  for key in INTEGRATION_API_KEY WEBHOOK_SECRET LIBRENMS_API_TOKEN GLPI_APP_TOKEN GLPI_USER_TOKEN; do
+    [[ -n "$(read_value "$key")" ]] || {
+      echo "ERROR: INTEGRATION_ENABLED=true requires $key."
+      exit 1
+    }
+  done
+  [[ "$(read_value GLPI_API_MODE)" == "legacy_v1" ]] || {
+    echo "ERROR: current executable integration supports GLPI_API_MODE=legacy_v1."
     exit 1
   }
 fi
@@ -27,6 +46,8 @@ fi
 echo "Validating canonical Docker Compose configuration..."
 docker compose -f docker-compose.yml config -q
 docker compose -f docker-compose.yml --profile auto-discovery config -q
+docker compose -f docker-compose.yml --profile integration config -q
+docker compose -f docker-compose.yml --profile auto-discovery --profile integration config -q
 
 echo "Checking that databases/cache are not host-published..."
 if grep -Eq '^[[:space:]]*-[[:space:]]*["'\'' ]*(3306|6379):' docker-compose.yml; then
@@ -47,7 +68,7 @@ for script in install.sh configure.sh START.sh scripts/*.sh; do
 done
 
 echo "Validating Python syntax and Service Desk policy..."
-python3 -m py_compile npm-auto-discovery.py scripts/validate-servicedesk-policy.py
+python3 -m py_compile npm-auto-discovery.py scripts/validate-servicedesk-policy.py integration-api/app/*.py
 python3 scripts/validate-servicedesk-policy.py
 
 echo "Validation passed."
