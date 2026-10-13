@@ -1,591 +1,42 @@
-# GLPI-LibreNMS + Nginx Proxy Manager (Docker)
+# GLPI-LibreNMS — ERNU.EU
 
-**Autor:** Anatolie Ernu (ernu.md)  
-**Versiune:** 1.0  
-**Date:** October 2026  
-**Licență:** Proprietary (ERNU.EU)
+Self-hosted IT Asset Management, Service Desk / ITSM, network monitoring and endpoint-to-switch correlation platform.
 
----
-
-## 📋 Descriere
-
-Stack complet **Docker** cu:
-- **GLPI** - IT Asset Management
-- **LibreNMS** - Network Monitoring
-- **Nginx Proxy Manager** - Publicare în rețea locală cu auto-discovery
-- **MySQL** - Database server
-- **Redis** - Cache server
-- **Auto-Discovery Service** - Publicare automată a containerelor
+**Canonical architecture:** GLPI + LibreNMS + Nginx Proxy Manager + Docker Compose  
+**Network vendors:** Cisco IOS/IOS XE and MikroTik RouterOS  
+**Service Desk:** GLPI native ITSM  
+**Repository owner:** Anatolie Ernu / ERNU.EU
 
 ---
 
-## ⚡ Instalare Rapidă (30 minute)
+## What this project does
 
-### 1. Prerequisite
+The target operational correlation is:
 
-```bash
-# Linux cu Docker și Docker Compose
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-
-# Adaugă user în grup docker (evita sudo)
-sudo usermod -aG docker $USER
-newgrp docker
+```text
+User / Ticket
+     |
+     v
+GLPI Service Desk
+     |
+     +--> Asset / CMDB / GLPI Agent
+     |       |
+     |       +--> Hostname / IP / MAC
+     |
+     +--> Integration API
+             |
+             v
+          LibreNMS
+             |
+             +--> Switch
+             +--> Port
+             +--> VLAN
+             +--> FDB/MAC
+             +--> LLDP/CDP
+             +--> Alert state
 ```
 
-### 2. Clone Repository
-
-```bash
-git clone https://github.com/anatolie-ernu/GLPI-LibreNMS.git
-cd GLPI-LibreNMS
-```
-
-### 3. Rulează Installer
-
-```bash
-chmod +x install.sh
-./install.sh
-```
-
-**Output așteptat:**
-
-```
-[INFO] Verificare prerequisite...
-[✓] Docker instalat
-[✓] Docker Compose instalat
-[INFO] Build și start containerele...
-[INFO] Aștept containerele să fie gata...
-[✓] MySQL: ready
-```
-
-### 4. Acces Aplicații
-
-```bash
-# Nginx Proxy Manager Admin
-http://localhost:81/
-
-# GLPI
-http://localhost:3000/
-
-# LibreNMS
-http://localhost:8000/
-
-# MySQL
-localhost:3306 (root / root_secure_pass)
-
-# Redis
-localhost:6379
-```
-
----
-
-## 🏗️ Arhitectură
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                 Docker Network                           │
-│              (172.25.0.0/16 - glpi-net)                 │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  ┌────────────────────────────────────────────┐        │
-│  │   Nginx Proxy Manager (jc21/npm)           │        │
-│  │   Port 80/443 (HTTP/HTTPS)                 │        │
-│  │   Port 81 (Admin UI)                       │        │
-│  │   - Auto-routes from Docker labels         │        │
-│  │   - SSL/TLS support (Let's Encrypt)        │        │
-│  └────────────────────────────────────────────┘        │
-│         ↑           ↑           ↑                       │
-│   ┌─────┴────┬─────┴────┬──────┴──────┐               │
-│   │          │          │             │               │
-│   ↓          ↓          ↓             ↓               │
-│  ┌───────┐  ┌──────┐  ┌──────┐  ┌──────────┐         │
-│  │ GLPI  │  │ Lib- │  │MySQL │  │ Redis   │         │
-│  │:3000  │  │NMS   │  │:3306 │  │:6379   │         │
-│  │       │  │:8000 │  │      │  │        │         │
-│  └───────┘  └──────┘  └──────┘  └──────────┘         │
-│                                                        │
-│  ┌────────────────────────────────────────────┐        │
-│  │  npm-auto-discovery                       │        │
-│  │  - Scanează labels Docker npm.expose=true │        │
-│  │  - Crează proxy hosts automat             │        │
-│  │  - Interval: 5 minute                     │        │
-│  └────────────────────────────────────────────┘        │
-│                                                        │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-## 📦 Fișiere Incluse
-
-```
-.
-├── docker-compose.yml              # Configurație containerelor
-├── install.sh                       # Installer script
-├── README.md                        # Această documentație
-├── init-databases.sql               # Inițializare baze de date
-├── requirements-discovery.txt       # Python dependencies
-├── npm-auto-discovery.py           # Auto-discovery service (Python)
-└── Dockerfile.discovery            # Dockerfile pentru discovery
-```
-
----
-
-## 🔧 Configurare Post-Install
-
-### 1. Nginx Proxy Manager - Admin UI
-
-**Adresă:** `http://localhost:81/` (sau `http://<SERVER_IP>:81/`)
-
-**Login Default:**
-- Email: `admin@ernu.md`
-- Parola: `Npm@ernu2025!`
-
-**Post-Login Setup:**
-
-```
-1. Settings → General
-   - Change Admin Email
-   - Change Admin Password ⚠️ IMPORTANT!
-   - Set Application Title
-
-2. Settings → Nginx
-   - Enable HTTP/2 Support: ON
-   - Enable WebSocket Support: ON
-   - Worker Processes: auto
-
-3. SSL Certificates
-   - Click "Add SSL Certificate"
-   - Select "Let's Encrypt"
-   - Email: your@email.com
-   - Use DNS challenge for wildcard (*.local)
-```
-
-### 2. GLPI - Configurare Inițială
-
-**Adresă:** `http://localhost:3000/` (sau `http://<SERVER_IP>:3000/`)
-
-```
-1. Selectează limbă: English / Română
-2. Selectează opțiune install:
-   - "Install"
-3. Completează:
-   - SQL Host: mysql
-   - SQL User: glpi
-   - SQL Password: glpi_secure_pass
-   - SQL Database: glpi
-   - Default user: admin
-   - Default password: admin
-4. Click "Install"
-```
-
-**Post-Install:**
-- Login cu admin / admin
-- Settings → Schimbă parolă
-- Configură settings generale
-
-### 3. LibreNMS - Configurare Inițială
-
-**Adresă:** `http://localhost:8000/` (sau `http://<SERVER_IP>:8000/`)
-
-```
-1. Click "Let's Get Started"
-2. Selectează "MySQL" ca database
-3. Completează:
-   - Hostname: mysql
-   - Database: librenms
-   - Username: librenms
-   - Password: librenms_secure_pass
-4. Click "Check Connection"
-5. Creează admin user
-6. Click "Build Database"
-```
-
-**Post-Install:**
-- Login cu admin user
-- Settings → General
-- Adaugă devices
-
-### 4. DNS Local Configuration
-
-**Opțiunea 1: dnsmasq (Recommended)**
-
-```bash
-# /etc/dnsmasq.d/glpi-local.conf
-address=/.local/<SERVER_IP>
-```
-
-**Opțiunea 2: /etc/hosts (Quick)**
-
-```bash
-# /etc/hosts
-<SERVER_IP> glpi.local
-<SERVER_IP> librenms.local
-<SERVER_IP> npm.local
-```
-
-**Opțiunea 3: Windows Hosts**
-
-```
-C:\Windows\System32\drivers\etc\hosts
-<SERVER_IP> glpi.local
-<SERVER_IP> librenms.local
-<SERVER_IP> npm.local
-```
-
----
-
-## 🔄 Auto-Discovery Mechanism
-
-### How It Works
-
-```
-Container cu label npm.expose=true
-        ↓
-npm-auto-discovery scanner (fiecare 5 minute)
-        ↓
-Crează proxy host automat în NPM
-        ↓
-Domain <app>.local → <container>:<port>
-```
-
-### Docker Labels
-
-Adaugă labels containerului pentru a-l expune automat:
-
-```yaml
-services:
-  my-app:
-    image: my-app:latest
-    labels:
-      npm.expose: "true"              # REQUIRED - Activează discovery
-      npm.hostname: "myapp"           # Domain: myapp.local
-      npm.port: "8080"                # Port forward (default: 80)
-      npm.ssl: "false"                # Force SSL redirect
-      npm.websockets: "false"         # WebSocket support
-```
-
-### Exemplu - Adaugă aplicație nouă
-
-```yaml
-# Adaugă în docker-compose.yml:
-  my-new-app:
-    image: my-app:latest
-    container_name: my-new-app
-    ports:
-      - "5000:5000"
-    networks:
-      - glpi-net
-    labels:
-      npm.expose: "true"
-      npm.hostname: "myapp"
-      npm.port: "5000"
-```
-
-```bash
-# Restart docker-compose
-docker-compose up -d my-new-app
-
-# Verifică logs
-docker-compose logs npm-auto-discovery
-# [2026-10-07 14:22:18] ✓ Proxy creat: myapp.local → my-new-app:5000
-```
-
----
-
-## 📊 Comenzi Utile
-
-### Status & Logs
-
-```bash
-# Vizualizează status containerelor
-docker-compose ps
-
-# Logs în real-time
-docker-compose logs -f
-
-# Logs per service
-docker-compose logs -f nginx-proxy-manager
-docker-compose logs -f npm-auto-discovery
-docker-compose logs -f glpi
-docker-compose logs -f librenms
-docker-compose logs -f mysql
-
-# Logs cu timestamp
-docker-compose logs --timestamps
-```
-
-### Control Containerelor
-
-```bash
-# Start
-docker-compose up -d
-
-# Stop (fără a șterge volumele)
-docker-compose down
-
-# Restart specific service
-docker-compose restart glpi
-
-# Rebuild service
-docker-compose up -d --build npm-auto-discovery
-
-# Remove everything (inclusive volumes)
-docker-compose down -v
-```
-
-### Database Access
-
-```bash
-# MySQL CLI
-docker-compose exec mysql mysql -u root -proot_secure_pass
-
-# Exemplu: Verificare GLPI database
-mysql> USE glpi;
-mysql> SHOW TABLES;
-
-# Backup MySQL
-docker-compose exec mysql mysqldump -u root -proot_secure_pass --all-databases > backup.sql
-
-# Restore MySQL
-docker-compose exec -T mysql mysql -u root -proot_secure_pass < backup.sql
-```
-
-### Docker Network
-
-```bash
-# Verificare network
-docker network ls
-docker network inspect glpi-librenms_glpi-net
-
-# Test connectivity intre containers
-docker-compose exec glpi ping mysql
-docker-compose exec npm curl http://nginx-proxy-manager:81/health
-```
-
----
-
-## 🐛 Troubleshooting
-
-### Container nu pornește
-
-```bash
-# Verifică logs
-docker-compose logs <service_name>
-
-# Exemplu
-docker-compose logs mysql
-```
-
-### Port deja ocupat
-
-```bash
-# Găsește procesul pe port
-lsof -i :80
-lsof -i :443
-lsof -i :81
-
-# Oprește procesul
-kill -9 <PID>
-
-# Sau schimbă port în docker-compose.yml
-# ports:
-#   - "8080:80"  # Port 8080 local
-```
-
-### MySQL nu e gata
-
-```bash
-# MySQL are nevoie de timp să se inițializeze
-# Așteptă ~30 secunde
-
-# Verifică dacă e gata
-docker-compose exec mysql mysqladmin ping -u root -proot_secure_pass
-
-# Până nu răspunde OK, alte servicii așteptă
-```
-
-### Auto-discovery nu funcționează
-
-```bash
-# Verifică serviciul
-docker-compose logs npm-auto-discovery
-
-# Verifica containerele cu label npm.expose
-docker ps --format "table {{.Names}}\t{{.Labels}}"
-
-# Forțează rescanning
-docker-compose restart npm-auto-discovery
-
-# Aștept 5 minute, apoi verifică admin NPM dacă au apărut proxies noi
-```
-
-### NPM Admin UI nu răspunde
-
-```bash
-# Verifică dacă e running
-docker-compose ps nginx-proxy-manager
-
-# Restart
-docker-compose restart nginx-proxy-manager
-
-# Verifică health
-curl http://localhost:81/health
-
-# Dacă database e corupt
-docker-compose down
-docker volume rm glpi-librenms_npm_data
-docker-compose up -d nginx-proxy-manager
-```
-
-### GLPI / LibreNMS not accessible
-
-```bash
-# Verifică dacă container-ul e running
-docker-compose ps glpi
-
-# Verifică logs
-docker-compose logs glpi
-
-# Verifica network connectivity
-docker-compose exec glpi ping mysql
-
-# Restart container
-docker-compose restart glpi
-```
-
----
-
-## 📈 Performance & Scaling
-
-### Resource Limits
-
-Containerele au seturi minimum de resource requests. Dacă ai probleme:
-
-```yaml
-# Editează docker-compose.yml și adaugă limit:
-services:
-  glpi:
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 1G
-```
-
-### Backup & Recovery
-
-```bash
-# Backup databases
-docker-compose exec mysql mysqldump -u root -proot_secure_pass --all-databases | gzip > backup-$(date +%Y%m%d).sql.gz
-
-# Backup volumes
-docker run --rm -v glpi-librenms_npm_data:/data -v $(pwd):/backup alpine tar czf /backup/npm-data.tar.gz /data
-docker run --rm -v glpi-librenms_glpi_data:/data -v $(pwd):/backup alpine tar czf /backup/glpi-data.tar.gz /data
-
-# Restore
-gunzip < backup-20261007.sql.gz | docker-compose exec -T mysql mysql -u root -proot_secure_pass
-```
-
----
-
-## 🔐 Security Considerations
-
-⚠️ **IMPORTANT** - Acest setup este pentru development/lab. Pentru production:
-
-1. **Schimbă toate parolele default**
-   ```bash
-   # NPM Admin
-   npm.local:81 → Settings → Change Password
-   
-   # GLPI Admin
-   glpi.local → Settings → Change admin password
-   
-   # LibreNMS Admin
-   librenms.local → Settings → Change admin password
-   
-   # MySQL Root
-   Edit docker-compose.yml și schimbă MYSQL_ROOT_PASSWORD
-   ```
-
-2. **Configurează SSL/TLS**
-   - NPM Admin → SSL Certificates
-   - Let's Encrypt (wildcard: *.local)
-   - Sau certificate propriu
-
-3. **Restricționează firewall**
-   ```bash
-   # Doar porturile necesare
-   sudo ufw allow 22    # SSH
-   sudo ufw allow 80    # HTTP
-   sudo ufw allow 443   # HTTPS
-   # Port 81 și alte porturi - RESTRICTED
-   ```
-
-4. **Network Isolation**
-   - Containers pe rețea privată (glpi-net)
-   - NPM singur cu acces la 80/443
-   - Nu expune MySQL, Redis direct
-
----
-
-## 📞 Support & Resources
-
-- **Nginx Proxy Manager Docs:** https://nginxproxymanager.com/
-- **GLPI Documentation:** https://glpi-project.org/
-- **LibreNMS Documentation:** https://docs.librenms.org/
-- **Docker Compose Reference:** https://docs.docker.com/compose/
-
----
-
-## 📝 Changelog
-
-**v1.0 (Oct 2026)**
-- Initial release
-- Docker Compose setup
-- Nginx Proxy Manager + auto-discovery
-- GLPI + LibreNMS + MySQL + Redis
-- Complete documentation
-
----
-
-## 👨‍💻 Author
-
-**Anatolie Ernu**  
-- **Company:** ERNU.EU
-- **Role:** IT & Security Consultant
-- **Email:** ITSec@ernu.md
-- **GitHub:** https://github.com/anatolie-ernu
-
----
-
-## 📄 License
-
-**Proprietary** - ERNU.EU  
-© 2026 Anatolie Ernu. Toate drepturile rezervate.
-
----
-
-**Last Updated:** October 7, 2026
-
-## Stage 2 — GLPI Service Desk / ITSM
-
-The project standardizes on **GLPI Service Desk** as the integrated ITSM layer. No separate Service Desk platform is required for the baseline architecture.
-
-Configuration source of truth:
-
-- [Stage 2 implementation status](docs/STAGE-2-IMPLEMENTATION-STATUS.md)
-- [Priority / SLA / OLA / Escalation policy](docs/GLPI-PRIORITY-SLA-ESCALATION-MATRIX.md)
-- [Stage 2 configuration runbook](docs/GLPI-STAGE2-CONFIGURATION-RUNBOOK.md)
-- [GLPI Service Desk guide](docs/GLPI-SERVICEDESK.md)
-- [Escalation and reporting model](docs/GLPI-ESCALATION-REPORTING.md)
-- [Stage 2 ITSM plan](docs/STAGE-2-ITSM-SERVICEDESK.md)
-- [GLPI policy YAML/CSV](config/glpi/)
-
-Baseline operational model:
+The Service Desk model is:
 
 ```text
 L0  Self-Service / Knowledge Base
@@ -594,4 +45,296 @@ L2  Network / Infrastructure / Security / Applications / Business Systems
 L3  Senior / IT Management / Vendor Coordination
 ```
 
-Priority is derived from **Impact x Urgency** and normalized to P1 Critical, P2 High, P3 Medium and P4 Low. SLA, OLA and concrete time-based escalation rules are version-controlled under `config/glpi/`.
+Priority is normalized to P1-P4 using Impact × Urgency.
+
+---
+
+## Canonical Docker deployment
+
+There is exactly **one** supported Compose file:
+
+```text
+docker-compose.yml
+```
+
+The previous `compose.yml` architecture has been removed to prevent accidental deployment of a different stack.
+
+Canonical services:
+
+- Nginx Proxy Manager
+- official GLPI image
+- dedicated GLPI MySQL
+- LibreNMS
+- dedicated LibreNMS MariaDB
+- LibreNMS Redis
+- LibreNMS Dispatcher
+- optional NPM auto-discovery
+- optional restricted Docker Socket Proxy
+
+Security defaults:
+
+- no database/cache host ports;
+- GLPI/LibreNMS direct ports bind to loopback by default;
+- NPM admin binds to loopback by default;
+- database passwords are generated into the untracked `.env`;
+- auto-discovery is disabled until explicitly configured;
+- auto-discovery does not mount the Docker socket directly.
+
+See [Production Hardening](docs/PRODUCTION-HARDENING.md).
+
+---
+
+## Quick start
+
+### 1. Install Docker
+
+```bash
+sudo bash scripts/install-docker.sh
+```
+
+### 2. Initialize private configuration
+
+```bash
+bash scripts/init-env.sh --domain example.internal
+nano .env
+```
+
+For a management-interface NPM admin binding:
+
+```bash
+bash scripts/init-env.sh \
+  --domain example.internal \
+  --bind-ip 10.0.0.50
+```
+
+### 3. Validate
+
+```bash
+bash scripts/validate.sh
+```
+
+### 4. Deploy
+
+```bash
+bash scripts/deploy.sh
+```
+
+### 5. Check status
+
+```bash
+bash scripts/status.sh
+```
+
+Direct diagnostic ports default to:
+
+```text
+127.0.0.1:8081 -> GLPI
+127.0.0.1:8000 -> LibreNMS
+127.0.0.1:81   -> NPM Admin
+```
+
+NPM publishes HTTP/HTTPS on ports 80/443.
+
+---
+
+## NPM auto-discovery
+
+Auto-discovery is intentionally disabled by default.
+
+After NPM first-login setup and credential change:
+
+```env
+AUTO_DISCOVERY_ENABLED=true
+NPM_API_EMAIL=<private value>
+NPM_API_PASSWORD=<private value>
+```
+
+Then:
+
+```bash
+bash scripts/deploy.sh
+```
+
+The discovery container talks to Docker through a restricted socket-proxy profile rather than mounting `/var/run/docker.sock` directly.
+
+---
+
+## GLPI Service Desk / ITSM
+
+The project standardizes on GLPI Service Desk instead of adding a separate ticketing platform.
+
+Key documents:
+
+- [Stage 2 Implementation Status](docs/STAGE-2-IMPLEMENTATION-STATUS.md)
+- [GLPI Service Desk Guide](docs/GLPI-SERVICEDESK.md)
+- [Priority / SLA / OLA / Escalation Policy](docs/GLPI-PRIORITY-SLA-ESCALATION-MATRIX.md)
+- [Stage 2 Configuration Runbook](docs/GLPI-STAGE2-CONFIGURATION-RUNBOOK.md)
+- [Escalation and Reporting](docs/GLPI-ESCALATION-REPORTING.md)
+- [Stage 2 ITSM Plan](docs/STAGE-2-ITSM-SERVICEDESK.md)
+
+Machine-readable source of truth:
+
+- [config/glpi/servicedesk-policy.yaml](config/glpi/servicedesk-policy.yaml)
+- [config/glpi/priority-matrix.csv](config/glpi/priority-matrix.csv)
+- [config/glpi/sla-policies.csv](config/glpi/sla-policies.csv)
+- [config/glpi/support-groups.csv](config/glpi/support-groups.csv)
+- [config/glpi/escalation-rules.csv](config/glpi/escalation-rules.csv)
+
+Baseline SLA:
+
+| Priority | TTO | TTR |
+|---|---:|---:|
+| P1 Critical | 15 min | 2 h |
+| P2 High | 30 min | 4 h |
+| P3 Medium | 4 h | 1 business day |
+| P4 Low | 1 business day | 3 business days |
+
+---
+
+## Network integration
+
+Cisco:
+
+- [Cisco SNMPv3](docs/CISCO-SNMPV3.md)
+- [Cisco example](config/cisco/snmpv3-example.txt)
+
+MikroTik:
+
+- [MikroTik SNMPv3](docs/MIKROTIK-SNMPV3.md)
+- [MikroTik example](config/mikrotik/snmpv3-example.rsc)
+
+Production baseline is SNMPv3 `authPriv`, read-only, restricted to the LibreNMS management source.
+
+---
+
+## Endpoint inventory
+
+GLPI Agent provides endpoint inventory.
+
+See:
+
+- [GLPI Agent Deployment](docs/GLPI-AGENT.md)
+
+Target correlation:
+
+```text
+GLPI asset
+  Hostname / Serial / User / IP / MAC
+                |
+                v
+LibreNMS FDB/ARP/topology
+                |
+                v
+Switch / Port / VLAN
+```
+
+---
+
+## Integration API
+
+The API contract is present, but the executable service is **not yet implemented**.
+
+Current files:
+
+- `integration-api/README.md`
+- `integration-api/openapi.yaml`
+
+Planned responsibilities:
+
+- IP/MAC -> switch/port/VLAN enrichment;
+- LibreNMS alert -> GLPI incident;
+- deduplication;
+- recovery correlation;
+- audit logging.
+
+---
+
+## Backup and restore
+
+```bash
+bash scripts/backup.sh
+```
+
+See [Backup / Restore](docs/BACKUP-RESTORE.md).
+
+A backup is not considered proven until a restore test has been completed on an isolated host.
+
+---
+
+## Complete documentation
+
+- [Complete Romanian Guide — Markdown](docs/COMPLETE-GUIDE-RO.md)
+- [Generated Complete Romanian PDF](docs/pdf/GLPI-LibreNMS-Complete-Guide-RO.pdf)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Installation](docs/INSTALL.md)
+- [Production Hardening](docs/PRODUCTION-HARDENING.md)
+- [Legacy Compose Migration](docs/MIGRATION-LEGACY-COMPOSE.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+
+The repository also contains ERNU.EU-branded DOCX/PDF deliverables.
+
+---
+
+## Current status
+
+### Implemented in repository
+
+- canonical hardened Docker stack;
+- NPM reverse proxy;
+- GLPI;
+- LibreNMS + Dispatcher;
+- separate databases;
+- Redis;
+- optional hardened NPM auto-discovery;
+- installation/validation/backup scripts;
+- Cisco/MikroTik SNMPv3 guidance;
+- Service Desk policy source-of-truth;
+- CI validation;
+- PDF documentation generation.
+
+### Specified but still requiring deployment/configuration
+
+- AD/LDAP pilot;
+- GLPI groups/profiles/categories;
+- production SLA/OLA configuration;
+- escalation levels and notifications;
+- dashboards;
+- GLPI Agent rollout;
+- Cisco/MikroTik onboarding.
+
+### Planned implementation
+
+- executable Integration API;
+- automated LibreNMS alert -> GLPI ticket creation;
+- deduplication/recovery state;
+- end-to-end integration tests.
+
+---
+
+## Production gate
+
+The repository is **pilot-ready after environment configuration**, not automatically production-approved.
+
+Before Production:
+
+1. stage the stack;
+2. configure DNS/HTTPS;
+3. validate firewall exposure;
+4. configure GLPI/LibreNMS;
+5. apply Service Desk policy;
+6. configure AD/LDAP pilot;
+7. onboard pilot network devices;
+8. deploy GLPI Agent to pilot endpoints;
+9. test backup/restore;
+10. run accelerated SLA/escalation tests;
+11. review image versions/digests;
+12. complete security and acceptance sign-off.
+
+---
+
+## License / branding
+
+ERNU.EU documentation and repository licensing terms apply as stated in the repository.
+
+**Author:** Anatolie Ernu  
+**Brand:** ERNU.EU
