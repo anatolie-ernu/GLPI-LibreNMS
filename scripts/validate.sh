@@ -35,7 +35,7 @@ if grep -Eq '^[[:space:]]*-[[:space:]]*["'\'' ]*(3306|6379):' docker-compose.yml
 fi
 
 echo "Checking known legacy hardcoded credentials..."
-runtime_files=(docker-compose.yml install.sh configure.sh START.sh npm-auto-discovery.py scripts/*.sh .env.example)
+runtime_files=(docker-compose.yml install.sh configure.sh START.sh npm-auto-discovery.py scripts/init-env.sh scripts/deploy.sh scripts/status.sh scripts/backup.sh .env.example)
 if grep -En 'root_secure_pass|glpi_secure_pass|librenms_secure_pass|Npm@ernu2025!' "${runtime_files[@]}"; then
   echo "ERROR: legacy hardcoded credential found in runtime/config files."
   exit 1
